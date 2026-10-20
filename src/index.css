@@ -393,7 +393,7 @@ h1 em { color: #0095d9; font-style: normal; }
 .second-message { margin-top: 4px; }
 .dialogue-pair { display: flex; flex-direction: column; gap: 18px; }
 .rich-ai-row { align-items: flex-start; }
-.rich-response { min-width: 0; padding: 13px 18px; border: 1px solid #e2e6ea; border-radius: 12px 12px 12px 4px; background: #f8f9fa; box-shadow: 0 1px 1px rgba(20,40,60,.04); }
+.rich-response { min-width: 0; padding: 13px 18px; border-radius: 12px 12px 12px 4px; background: #f8f9fa; }
 .rich-response > p, .rich-response li { font-size: 13px; line-height: 1.45; }
 .rich-response strong { font-family: "Lato:Bold"; }
 .chat-chart { margin: 16px 0 20px; padding: 16px; border-radius: 6px; background: #f8f9fa; }
@@ -597,7 +597,7 @@ h1 em { color: #0095d9; font-style: normal; }
   .assistant { transition: grid-template-columns .3s cubic-bezier(.4, 0, .2, 1); }
   .history { transition: padding .3s cubic-bezier(.4, 0, .2, 1); }
   .history:not(.collapsed) .expanded-content, .history.collapsed .collapsed-nav { animation: side-fade .3s ease both; }
-  .history.collapsed { padding: 28px 14px 20px; align-items: center; }
+  .history.collapsed { padding: 28px 18px 20px; align-items: center; }
   .history.collapsed .history-fixed { align-items: center; }
   .history.collapsed .history-brand { width: 100%; justify-content: center; }
   .history.collapsed .brand-expanded, .history.collapsed .sidebar-toggle, .history.collapsed .expanded-content { display: none; }
@@ -653,3 +653,61 @@ h1 em { color: #0095d9; font-style: normal; }
 @media (prefers-reduced-motion: reduce) {
   .assistant, .history, .expanded-content, .collapsed-nav, .waveform i { transition: none !important; animation: none !important; }
 }
+
+
+/* ===== V1.0 · Medidas do modal (1200 × 660; sidebar 280 / 72) ===== */
+@media (min-width: 851px) {
+  .assistant-overlay .workspace { padding: 22px 32px; }
+  .assistant { width: min(1200px, 100%); height: min(660px, 100%); align-self: center; border-radius: 12px; }
+  .assistant.sidebar-collapsed { grid-template-columns: 72px 1fr; }
+  .history { border-radius: 12px 0 0 12px; }
+  .chat-home { padding: 28px 54px 16px; overflow-x: hidden; overflow-y: auto; }
+  .intro { gap: 20px; }
+  .suggestions { margin-top: 28px; }
+}
+
+/* ===== V1.0 · Botão flutuante: tooltip à esquerda somente no hover ===== */
+.anby-launcher span { opacity: 0; transform: translateX(8px); pointer-events: none; transition: opacity .15s, transform .15s; }
+.anby-launcher:hover span, .anby-launcher:focus-visible span { opacity: 1; transform: none; }
+
+/* ===== V1.0 · Pausa e resposta interrompida ===== */
+.pause-button { cursor: pointer; }
+.interrupted { margin: 0; padding-top: 4px; color: #666; font-size: 14px; line-height: 21px; }
+
+/* ===== V1.0 · Modal de acesso (MFA) ===== */
+.mfa-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; overflow-y: auto; padding: 24px 16px; background: rgba(7, 31, 61, .56); }
+.mfa { position: relative; width: min(520px, 100%); margin: auto; padding: 40px 36px 28px; border-radius: 12px; background: #fff; box-shadow: 0 12px 36px rgba(0, 0, 0, .2); color: #363636; }
+.mfa-close { position: absolute; top: 12px; right: 14px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #0095d9; font-size: 26px; line-height: 1; }
+.mfa-close:hover { background: #e5f4fb; }
+.mfa-banner { margin: 0 0 20px; padding: 10px 14px; border-radius: 6px; background: #edf7fb; color: #0079b1; font-size: 13px; line-height: 18px; }
+.mfa h2 { margin: 0; font-size: 24px; line-height: 30px; font-weight: 700; }
+.mfa-step { margin: 6px 0 0; color: #0095d9; font-size: 12px; font-weight: 700; letter-spacing: .4px; }
+.mfa h3 { margin: 22px 0 6px; font-size: 18px; line-height: 24px; }
+.mfa form > p { margin: 0 0 18px; color: #666; font-size: 14px; line-height: 21px; }
+.mfa form > p b { color: #363636; }
+.mfa-field { display: block; margin-bottom: 16px; }
+.mfa-field > span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+.mfa-field input { width: 100%; height: 44px; padding: 0 12px; border: 1px solid #d4d4d4; border-radius: 6px; background: #fff; color: #363636; font: inherit; font-size: 14px; }
+.mfa-field input::placeholder { color: #b2b5bf; }
+.mfa-field input:focus { border-color: #0095d9; outline: 0; box-shadow: 0 0 0 3px rgba(0, 149, 217, .16); }
+.mfa-field input.invalid { border-color: #bd3232; }
+.mfa-field input.code { letter-spacing: 6px; font-size: 18px; }
+.mfa-field input:disabled { background: #f0f1f2; }
+.mfa-field small { display: block; margin-top: 6px; color: #bd3232; font-size: 12px; }
+.mfa-primary, .mfa-secondary { height: 44px; min-width: 128px; padding: 0 22px; border-radius: 6px; font-size: 14px; font-weight: 700; display: inline-grid; place-items: center; }
+.mfa form > .mfa-primary { width: 100%; margin-top: 6px; }
+.mfa-primary { border: 0; background: #0095d9; color: #fff; }
+.mfa-primary:hover:not(:disabled) { background: #0086c5; }
+.mfa-primary:disabled { background: #d4d4d4; color: #fff; cursor: not-allowed; }
+.mfa-secondary { border: 1px solid #0095d9; background: #fff; color: #0095d9; }
+.mfa-secondary:hover { background: #e5f4fb; }
+.mfa-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.mfa-actions .mfa-primary { flex: 1; }
+.mfa-resend { margin: 0 0 6px !important; color: #666; font-size: 13px !important; }
+.mfa-link { margin: 0 0 6px; padding: 0; border: 0; background: transparent; color: #0095d9; font-size: 13px; font-weight: 700; text-decoration: underline; }
+.mfa-demo { margin: 0 0 6px !important; color: #7b7b7b; font-size: 11px !important; line-height: 16px !important; }
+.mfa-spinner { width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff; border-radius: 50%; animation: mfa-spin .7s linear infinite; }
+@keyframes mfa-spin { to { transform: rotate(360deg); } }
+.mfa-legal { margin: 26px 0 0; color: #7b7b7b; font-size: 11px; line-height: 15px; }
+.mfa-legal a { color: #0095d9; }
+@media (prefers-reduced-motion: reduce) { .mfa-spinner, .anby-launcher span { animation: none !important; transition: none !important; } }

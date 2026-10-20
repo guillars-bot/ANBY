@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FocusEvent, type MouseEvent } from "react";
+import MfaModal from "./MfaModal";
+import { clearSession, firstName, loadSession, saveSession, type Session } from "./session";
 
 const A = "/assets";
 
@@ -90,6 +92,14 @@ function StopIcon() {
   return (
     <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true">
       <rect width="9" height="9" rx="1.5" fill="#fff" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+      <rect x="1.5" y="1" width="2.6" height="8" rx=".8" /><rect x="5.9" y="1" width="2.6" height="8" rx=".8" />
     </svg>
   );
 }
@@ -192,11 +202,10 @@ function FundCompositionResponse() {
   );
 }
 
-function AssistantThinking({ stage }: { stage: number }) {
-  const labels = ["Iniciando...", "Pensando...", "Analisando...", "Gerando a resposta..."];
+function AssistantThinking({ stage, question = "Compare as categorias de fundos e entenda a composição do PL", labels = ["Iniciando...", "Pensando...", "Analisando...", "Gerando a resposta..."] }: { stage: number; question?: string; labels?: string[] }) {
   return (
     <>
-      <div className="user-row"><p>Compare as categorias de fundos e entenda a composição do PL</p></div>
+      <div className="user-row"><p>{question}</p></div>
       <div className="ai-row thinking-row">
         <img src={`${A}/54cd1.png`} alt="ANBY" />
         <div className="thinking-status" role="status" aria-live="polite">
@@ -420,6 +429,13 @@ export default function App() {
   const [transcribed, setTranscribed] = useState(false);
   const [tip, setTip] = useState<{ text: string; top: number; left: number; dir: "r" | "l" } | null>(null);
   const assistantRef = useRef<HTMLDivElement>(null);
+  const [initialSession] = useState(loadSession);
+  const [session, setSession] = useState<Session | null>(initialSession.session);
+  const [sessionExpired, setSessionExpired] = useState(initialSession.expired);
+  const [mfaOpen, setMfaOpen] = useState(false);
+  const [responding, setResponding] = useState(false);
+  const [thinkStage, setThinkStage] = useState(0);
+  const [interrupted, setInterrupted] = useState(false);
 
   const newConversation = () => {
     setEntryScenario(null);
@@ -427,17 +443,29 @@ export default function App() {
     setActive(null);
     setQuestion("");
     setSentQuestion("");
+    setResponding(false);
+    setInterrupted(false);
     setCopied(false);
     setLiked(false);
     setFeedbackSent(null);
     setDrawerOpen(false);
   };
 
-  const sendQuestion = () => {
-    if (!question.trim()) return;
-    setSentQuestion(question.trim());
+  const askQuestion = (text: string) => {
+    setSentQuestion(text);
     setQuestion("");
     setTranscribed(false);
+    setInterrupted(false);
+    setThinkStage(0);
+    setResponding(true);
+  };
+  const sendQuestion = () => {
+    if (question.trim() && !responding) askQuestion(question.trim());
+  };
+  // Pausar interrompe a resposta; para reiniciar é preciso enviar a pergunta de novo.
+  const pauseResponse = () => {
+    setResponding(false);
+    setInterrupted(true);
   };
 
   // Tooltip posicionado em relação ao painel do assistente (evita cortes por overflow)
@@ -541,21 +569,69 @@ export default function App() {
     if (active === id) newConversation();
   };
 
+  // Fechar mantém a conversa (e qualquer resposta em andamento segue em segundo plano).
   const closeAssistant = () => {
     setAssistantOpen(false);
     setTermsOpen(false);
     setDrawerOpen(false);
     setFeedbackOpen(false);
-    setEntryScenario(null);
-    setScenarioLoading(false);
+    setMfaOpen(false);
     setVoice("idle");
     setTranscribed(false);
     setTip(null);
+    if (window.history.state?.anby) window.history.back();
   };
+
+  const openAssistant = (scenario?: "fund-composition") => {
+    if (scenario) {
+      setEntryScenario(scenario);
+      setScenarioLoading(true);
+      setActive(null);
+      setSentQuestion("");
+      setResponding(false);
+      setInterrupted(false);
+    }
+    setSidebarCollapsed(false);
+    setAssistantOpen(true);
+    window.history.pushState({ anby: true }, "");
+  };
+
+  const handleVerified = (data: { name: string; email: string }) => {
+    saveSession(data);
+    setSession({ ...data, at: Date.now() });
+    setSessionExpired(false);
+    setMfaOpen(false);
+  };
+
+  const logout = () => {
+    clearSession();
+    setSession(null);
+  };
+
+  // O botão voltar do navegador devolve o usuário à tela de onde abriu o assistente.
+  const openRef = useRef(false);
+  const closeRef = useRef(closeAssistant);
+  openRef.current = assistantOpen;
+  closeRef.current = closeAssistant;
+  useEffect(() => {
+    const onPop = () => { if (openRef.current) closeRef.current(); };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => {
+    if (!responding) return;
+    const timers = [
+      window.setTimeout(() => setThinkStage(1), 1100),
+      window.setTimeout(() => setThinkStage(2), 2300),
+      window.setTimeout(() => setResponding(false), 3500),
+    ];
+    return () => timers.forEach(window.clearTimeout);
+  }, [responding]);
 
   const hasConversation = entryScenario !== null || active !== null || sentQuestion.length > 0;
   const currentQuestion = entryScenario === "fund-composition" ? "Compare as categorias de fundos e entenda a composição do PL" : sentQuestion || conversations.find((item) => item.id === active)?.title || "";
-  const currentDialogue = active ? dialogueByConversation[active] || genericDialogue : genericDialogue;
+  const currentDialogue = active ? (dialogueByConversation as Record<number, { answer: string; followups: string[][] } | undefined>)[active] || genericDialogue : genericDialogue;
 
   useEffect(() => {
     const element = conversationRef.current;
@@ -604,7 +680,7 @@ export default function App() {
         <button className="header-search" aria-label="Buscar"><img src={`${A}/fe6a2.svg`} alt="" /></button>
       </header>
 
-      <PortalHome onOpenAssistant={(scenario) => { setEntryScenario(scenario || null); setScenarioLoading(scenario === "fund-composition"); setActive(null); setSentQuestion(""); setSidebarCollapsed(false); setAssistantOpen(true); }} />
+      <PortalHome onOpenAssistant={openAssistant} />
       {assistantOpen && <div className={active === 4 ? "assistant-overlay rich-overlay" : "assistant-overlay"}>
       <section
         className={termsOpen ? "workspace terms-workspace" : "workspace"}
@@ -654,7 +730,18 @@ export default function App() {
             </section>
           </article>
         ) : (
-        <div ref={assistantRef} className={sidebarCollapsed ? "assistant sidebar-collapsed" : "assistant"}>
+        <div
+        ref={assistantRef}
+        className={sidebarCollapsed ? "assistant sidebar-collapsed" : "assistant"}
+        onClickCapture={(event) => {
+          // Sem sessão válida, qualquer clique (exceto fechar e o menu) abre o modal de dados pessoais.
+          if (session || mfaOpen) return;
+          if ((event.target as HTMLElement).closest(".close, .brand-button")) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setMfaOpen(true);
+        }}
+      >
           <button className="mobile-history" onClick={() => setDrawerOpen(true)} aria-label="Abrir histórico">
             <span></span><span></span><span></span>
           </button>
@@ -719,7 +806,7 @@ export default function App() {
                   ) : (
                     <button
                       className={`${active === item.id ? "conversation active" : "conversation"} conversation-edited`}
-                      onClick={() => { setEntryScenario(null); setActive(item.id); setSentQuestion(""); setDrawerOpen(false); setOpenMenuId(null); }}
+                      onClick={() => { setEntryScenario(null); setActive(item.id); setSentQuestion(""); setResponding(false); setInterrupted(false); setDrawerOpen(false); setOpenMenuId(null); }}
                     >
                       <span>{item.title}</span>
                       <small>
@@ -768,7 +855,7 @@ export default function App() {
               <span className="avatar-small">GC</span>
               <span className="footer-text">
                 <b>Guilherme Cademartori</b>
-                <small>Minha conta <span aria-hidden="true">·</span> <a href="#sair" onClick={(event) => event.preventDefault()}>Sair</a></small>
+                <small>Minha conta <span aria-hidden="true">·</span> <a href="#sair" onClick={(event) => { event.preventDefault(); logout(); }}>Sair</a></small>
               </span>
             </div>
           </aside>
@@ -778,7 +865,7 @@ export default function App() {
           <div className={active === 4 ? "chat-home rich-chat" : "chat-home"}>
             {!hasConversation && <div className="intro">
               <img className="anby-avatar" src={`${A}/54cd1.png`} alt="ANBY" />
-              <h1>Olá, em que posso te ajudar<br />sobre <em>os dados do mercado?</em></h1>
+              <h1>{session ? `Olá, ${firstName(session.name)}, em que posso te ajudar` : "Olá, em que posso te ajudar"}<br />sobre <em>os dados do mercado?</em></h1>
             </div>}
 
             {!hasConversation && (
@@ -786,7 +873,7 @@ export default function App() {
                 <p>Faça uma pergunta ou tente um exemplo:</p>
                 <div className="question-list">
                   {suggestions.slice(0, 4).map((text) => (
-                    <button key={text} onClick={() => { setSentQuestion(text); setQuestion(""); }}>
+                    <button key={text} onClick={() => askQuestion(text)}>
                       <span>{text}</span>
                       <img src={`${A}/70745.svg`} alt="" />
                     </button>
@@ -798,7 +885,14 @@ export default function App() {
             {hasConversation && (
               <div className={conversationOverflows ? "conversation-viewport has-overflow" : "conversation-viewport"}>
               <div className="conversation-scroll" aria-live="polite" ref={conversationRef}>
-                {entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse />) : active === 4 ? <RichMarketResponse /> : <>
+                {entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse />) : active === 4 ? <RichMarketResponse /> : (responding || interrupted) && sentQuestion ? (
+                  responding
+                    ? <AssistantThinking stage={thinkStage} question={sentQuestion} labels={["Consultando memoria...", "Analisando...", "Gerando a resposta..."]} />
+                    : <>
+                      <div className="user-row"><p>{sentQuestion}</p></div>
+                      <div className="ai-row"><img src={`${A}/54cd1.png`} alt="ANBY" /><p className="interrupted" role="status">Resposta interrompida. Para reiniciar, envie a pergunta novamente.</p></div>
+                    </>
+                ) : <>
                 <div className="user-row">
                   <p>{currentQuestion}</p>
                 </div>
@@ -850,7 +944,7 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                {currentDialogue.followups.slice(1).map(([followupQuestion, followupAnswer]) => (
+                {currentDialogue.followups.slice(1).map(([followupQuestion, followupAnswer]: string[]) => (
                   <div className="dialogue-pair" key={followupQuestion}>
                     <div className="user-row">
                       <p>{followupQuestion}</p>
@@ -881,17 +975,21 @@ export default function App() {
                     onChange={(event) => { setQuestion(event.target.value); setTranscribed(false); }}
                     placeholder="Pergunte sobre fundos, renda fixa e mercado de capitais"
                     aria-label="Mensagem para a ANBY"
-                    disabled={voice === "recording"}
+                    disabled={voice === "recording" || responding}
                   />
                   <div className="composer-actions">
                     <button
                       className={voice === "recording" ? "mic-button is-recording" : "mic-button"}
                       onClick={toggleRecording}
+                      disabled={responding}
                       aria-label={voice === "recording" ? "Parar e transcrever" : "Ditar a pergunta"}
                       {...tipProps(voice === "recording" ? "Parar e transcrever" : "Ditar a pergunta", "l")}
                     >
                       {voice === "recording" ? <StopIcon /> : <MicIcon />}
                     </button>
+                    {responding ? (
+                      <button className="send-button send-active pause-button" onClick={pauseResponse} aria-label="Pausar resposta"><PauseIcon /></button>
+                    ) : (
                     <button
                       className={question.trim() && voice === "idle" ? "send-button send-active" : "send-button"}
                       disabled={!question.trim() || voice === "recording"}
@@ -900,6 +998,7 @@ export default function App() {
                     >
                       <SendIcon />
                     </button>
+                    )}
                   </div>
                 </div>
                 {voice === "recording" && (
@@ -970,6 +1069,7 @@ export default function App() {
         </div>
       )}
       </div>}
+      <MfaModal open={mfaOpen && assistantOpen} expired={sessionExpired} onClose={() => setMfaOpen(false)} onVerified={handleVerified} />
     </main>
   );
 }
