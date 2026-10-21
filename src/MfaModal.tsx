@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 // Regras de validação definidas no design (anotações "Inputs de dados pessoais").
 const nameOk = (v: string) => /^\S+(\s+\S+)+$/.test(v.trim());
@@ -28,7 +28,9 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState({ name: false, email: false });
-  const [code, setCode] = useState("");
+  const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+  const code = digits.join("");
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [error, setError] = useState("");
@@ -62,7 +64,7 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
     // Se o e-mail mudou, um novo código é enviado e o tempo de reenvio recomeça.
     if (email.trim() !== sentEmail.current) {
       sentEmail.current = email.trim();
-      setCode(""); setAttempts(0); setError(""); setResendLeft(RESEND_SECONDS);
+      setDigits(Array(6).fill("")); setAttempts(0); setError(""); setResendLeft(RESEND_SECONDS);
     }
     setLoading(false);
     setStep(2);
@@ -84,7 +86,22 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
     setError(`Código incorreto. Você tem mais ${left} ${left === 1 ? "tentativa" : "tentativas"}.`);
   };
 
-  const resend = () => { setCode(""); setAttempts(0); setError(""); setResendLeft(RESEND_SECONDS); };
+  const changeDigit = (index: number, value: string) => {
+    const typed = value.replace(/\D/g, "").slice(0, 6 - index);
+    const next = [...digits];
+    if (!typed) next[index] = "";
+    else typed.split("").forEach((char, offset) => { next[index + offset] = char; });
+    setDigits(next);
+    if (!locked) setError("");
+    if (typed) inputs.current[Math.min(index + typed.length, 5)]?.focus();
+  };
+  const keyDigit = (index: number, event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Backspace" && !digits[index] && index > 0) inputs.current[index - 1]?.focus();
+    if (event.key === "ArrowLeft" && index > 0) inputs.current[index - 1]?.focus();
+    if (event.key === "ArrowRight" && index < 5) inputs.current[index + 1]?.focus();
+  };
+
+  const resend = () => { setDigits(Array(6).fill("")); setAttempts(0); setError(""); setResendLeft(RESEND_SECONDS); };
 
   return (
     <div className="mfa-backdrop">
@@ -92,6 +109,7 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
         <button className="mfa-close" onClick={onClose} aria-label="Fechar">×</button>
         {expired && <p className="mfa-banner">Seu acesso expirou. Para conversar com a ANBY, valide seu e-mail novamente.</p>}
         <h2 id="mfa-title">Acesso rápido e seguro</h2>
+        <div className="mfa-progress" role="progressbar" aria-label="Etapas do acesso" aria-valuemin={0} aria-valuemax={2} aria-valuenow={step}><i style={{ width: step === 1 ? "50%" : "100%" }} /></div>
         <p className="mfa-step">Passo {step}/2</p>
 
         {step === 1 ? (
@@ -116,13 +134,19 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
           <form onSubmit={(event) => { event.preventDefault(); if (canConfirm) void confirm(); }} noValidate>
             <h3>Validação de acesso</h3>
             <p>Enviamos um código de confirmação para o seu e-mail:<br /><b>{email.trim()}</b></p>
-            <label className="mfa-field">
-              <span>Código de confirmação</span>
-              <input value={code} inputMode="numeric" maxLength={6} placeholder="000000" autoComplete="one-time-code" autoFocus
-                onChange={(event) => { setCode(event.target.value.replace(/\D/g, "")); if (!locked) setError(""); }}
-                disabled={locked} aria-invalid={!!error} className={error ? "invalid code" : "code"} />
+            <fieldset className="mfa-otp">
+              <legend>Código de confirmação</legend>
+              <div className="mfa-otp-row">
+                {digits.map((digit, index) => (
+                  <input key={index} ref={(el) => { inputs.current[index] = el; }} value={digit} inputMode="numeric" maxLength={6}
+                    autoComplete={index === 0 ? "one-time-code" : "off"} aria-label={`Dígito ${index + 1} de 6`} autoFocus={index === 0}
+                    disabled={locked} className={error ? "invalid" : ""}
+                    onChange={(event) => changeDigit(index, event.target.value)} onKeyDown={(event) => keyDigit(index, event)}
+                    onFocus={(event) => event.currentTarget.select()} />
+                ))}
+              </div>
               {error && <small role="alert">{error}</small>}
-            </label>
+            </fieldset>
             {resendLeft > 0
               ? <p className="mfa-resend">Reenviar código em {clock(resendLeft)}min</p>
               : <button type="button" className="mfa-link" onClick={resend}>Reenviar código</button>}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FocusEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import MfaModal from "./MfaModal";
 import { clearSession, firstName, loadSession, saveSession, type Session } from "./session";
 
@@ -99,7 +99,7 @@ function StopIcon() {
 function PauseIcon() {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
-      <rect x="1.5" y="1" width="2.6" height="8" rx=".8" /><rect x="5.9" y="1" width="2.6" height="8" rx=".8" />
+      <rect width="10" height="10" rx="2" />
     </svg>
   );
 }
@@ -433,6 +433,10 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(initialSession.session);
   const [sessionExpired, setSessionExpired] = useState(initialSession.expired);
   const [mfaOpen, setMfaOpen] = useState(false);
+  const [panel, setPanel] = useState<null | "about" | "connect">(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuSection, setMenuSection] = useState(0);
   const [responding, setResponding] = useState(false);
   const [thinkStage, setThinkStage] = useState(0);
   const [interrupted, setInterrupted] = useState(false);
@@ -440,6 +444,7 @@ export default function App() {
   const newConversation = () => {
     setEntryScenario(null);
     setScenarioLoading(false);
+    setPanel(null);
     setActive(null);
     setQuestion("");
     setSentQuestion("");
@@ -596,6 +601,37 @@ export default function App() {
     window.history.pushState({ anby: true }, "");
   };
 
+  const openPanel = (kind: "about" | "connect") => {
+    setPanel(kind);
+    setDrawerOpen(false);
+    setOpenMenuId(null);
+  };
+
+  // Modal redimensionável (desktop): cresce a partir do centro, entre 1200 × 660 e a área disponível.
+  const startResize = (event: ReactPointerEvent<HTMLElement>) => {
+    const host = assistantRef.current;
+    if (!host || !host.parentElement) return;
+    event.preventDefault();
+    const box = host.getBoundingClientRect();
+    const area = host.parentElement.getBoundingClientRect();
+    const maxW = area.width - 64;
+    const maxH = area.height - 44;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const move = (e: PointerEvent) => {
+      setSize({
+        w: Math.min(maxW, Math.max(Math.min(1200, maxW), box.width + 2 * (e.clientX - startX))),
+        h: Math.min(maxH, Math.max(Math.min(660, maxH), box.height + 2 * (e.clientY - startY))),
+      });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   const handleVerified = (data: { name: string; email: string }) => {
     saveSession(data);
     setSession({ ...data, at: Date.now() });
@@ -671,7 +707,33 @@ export default function App() {
             <img className="brand" src={`${A}/d19e1.svg`} alt="ANBIMA Data" />
           </button>
           <nav aria-label="Navegação principal">
-            <button>Fundos <img src={`${A}/7facb.svg`} alt="" /></button>
+            <div className="nav-item" onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false); }}>
+              <button className={menuOpen ? "nav-open" : ""} aria-expanded={menuOpen} aria-haspopup="true" onClick={() => setMenuOpen(!menuOpen)}>Fundos <img src={`${A}/7facb.svg`} alt="" /></button>
+              {menuOpen && (
+                <div className="mega-menu" role="menu">
+                  <ul className="mega-sections">
+                    {["Dados em tela", "Publicações", "Preços", "Índices", "Datasets (via arquivo)", "Datasets (via API)"].map((label, index) => (
+                      <li key={label}>
+                        <button className={menuSection === index ? "on" : ""} onMouseEnter={() => setMenuSection(index)} onFocus={() => setMenuSection(index)} role="menuitem">
+                          <span>{label}</span>
+                          {index === 0 && <i className="mega-badge">1</i>}
+                          <svg width="11" height="8" viewBox="0 0 11 8" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m1 1.5 4.500 4.500L10 1.500" /></svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <ul className="mega-items">
+                    {menuSection === 0 ? ["Fundos (RCVM-175)", "Taxas de FIDCs", "Dados de negociação (prévias do REUNE)", "Painel de preços de renda fixa", "Transparência de taxas de fundos"].map((label) => (
+                      <li key={label}><button role="menuitem">{label}</button></li>
+                    )) : <li className="mega-empty">Conteúdo deste submenu fora do escopo do protótipo.</li>}
+                  </ul>
+                  <div className="mega-promo">
+                    <p>Consuma dados de mercado via API de forma automatizada.</p>
+                    <button>Acessar</button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button>Títulos Privados <img src={`${A}/7facb.svg`} alt="" /></button>
             <button>Títulos Públicos <img src={`${A}/7facb.svg`} alt="" /></button>
             <button>Mais <img src={`${A}/7facb.svg`} alt="" /></button>
@@ -733,10 +795,14 @@ export default function App() {
         <div
         ref={assistantRef}
         className={sidebarCollapsed ? "assistant sidebar-collapsed" : "assistant"}
+        style={size ? { width: size.w, height: size.h } : undefined}
         onClickCapture={(event) => {
           // Sem sessão válida, qualquer clique (exceto fechar e o menu) abre o modal de dados pessoais.
           if (session || mfaOpen) return;
-          if ((event.target as HTMLElement).closest(".close, .brand-button")) return;
+          const target = event.target as HTMLElement;
+          if (target.closest(".close, .brand-button, .mobile-history, .drawer-close, .scrim, .resize-handle")) return;
+          // No mobile, a barra lateral (drawer) precisa funcionar para navegar.
+          if (window.matchMedia("(max-width: 850px)").matches && target.closest(".history")) return;
           event.preventDefault();
           event.stopPropagation();
           setMfaOpen(true);
@@ -780,7 +846,7 @@ export default function App() {
               Conversas recentes <img className={recentExpanded ? "" : "rotated"} src={`${A}/cc7eb.svg`} alt="" />
             </button>
             {recentExpanded && <div className="conversation-list">
-              {(showAllConversations ? conversations : conversations.slice(0, 3)).map((item) => (
+              {conversations.slice(0, showAllConversations ? 4 : 3).map((item) => (
                 <div
                   key={item.id}
                   className={`conversation-item${active === item.id ? " selected" : ""}${openMenuId === item.id ? " menu-open" : ""}`}
@@ -806,7 +872,7 @@ export default function App() {
                   ) : (
                     <button
                       className={`${active === item.id ? "conversation active" : "conversation"} conversation-edited`}
-                      onClick={() => { setEntryScenario(null); setActive(item.id); setSentQuestion(""); setResponding(false); setInterrupted(false); setDrawerOpen(false); setOpenMenuId(null); }}
+                      onClick={() => { setPanel(null); setEntryScenario(null); setActive(item.id); setSentQuestion(""); setResponding(false); setInterrupted(false); setDrawerOpen(false); setOpenMenuId(null); }}
                     >
                       <span>{item.title}</span>
                       <small>
@@ -816,14 +882,16 @@ export default function App() {
                       </small>
                     </button>
                   )}
+                  {renamingId !== item.id && (
                   <button
                     className="conversation-menu-trigger"
                     onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
                     aria-label={`Editar conversa ${item.title}`}
                     aria-expanded={openMenuId === item.id}
                   >
-                    <img src={`${A}/7d544.svg`} alt="" />
+                    <MenuIcon name="more" />
                   </button>
+                  )}
                   {openMenuId === item.id && (
                     <div className="conversation-menu" role="menu">
                       <button onClick={() => startRename(item.id, item.title)} role="menuitem"><MenuIcon name="rename" /><span>Renomear</span></button>
@@ -834,25 +902,25 @@ export default function App() {
                   )}
                 </div>
               ))}
-              {conversations.length > 3 && <button className="show-all-conversations" onClick={() => setShowAllConversations(!showAllConversations)}>{showAllConversations ? "Ver menos" : "Ver todas"}</button>}
+              {conversations.length > 3 && <button className="show-all-conversations" onClick={() => setShowAllConversations(!showAllConversations)}>{showAllConversations ? "Ver menos" : "Ver mais"}</button>}
             </div>}
             <div className="sidebar-group">
               <p>Soluções</p>
-              <button className="sidebar-link"><img src={`${A}/b1265.svg`} alt="" /><span>Conectar no Claude</span><b>Novo</b></button>
+              <button className="sidebar-link" onClick={() => openPanel("connect")}><img src={`${A}/b1265.svg`} alt="" /><span>Conectar no Claude</span><b>Novo</b></button>
             </div>
             <div className="sidebar-group">
               <p>Saiba mais</p>
-              <button className="sidebar-link" onClick={() => setTermsOpen(true)}><InfoIcon /><span>Sobre a ANBY</span></button>
+              <button className="sidebar-link" onClick={() => openPanel("about")}><InfoIcon /><span>Sobre a ANBY</span></button>
             </div>
             </div>
             <div className="collapsed-nav">
               <button className="rail-button" aria-label="Minhas conversas" onClick={() => { hideTip(); setSidebarCollapsed(false); }} {...tipProps("Minhas conversas", "r", sidebarCollapsed)}><ChatIcon /></button>
-              <button className="rail-button" aria-label="Conectar no Claude" {...tipProps("Conectar no Claude", "r", sidebarCollapsed)}><img src={`${A}/b1265.svg`} alt="" /></button>
-              <button className="rail-button" aria-label="Sobre a ANBY" onClick={() => setTermsOpen(true)} {...tipProps("Sobre a ANBY", "r", sidebarCollapsed)}><InfoIcon /></button>
+              <button className="rail-button" aria-label="Conectar no Claude" onClick={() => openPanel("connect")} {...tipProps("Conectar no Claude", "r", sidebarCollapsed)}><img src={`${A}/b1265.svg`} alt="" /></button>
+              <button className="rail-button" aria-label="Sobre a ANBY" onClick={() => openPanel("about")} {...tipProps("Sobre a ANBY", "r", sidebarCollapsed)}><InfoIcon /></button>
             </div>
             </div>
             <div className="history-footer">
-              <span className="avatar-small">GC</span>
+              <button className="avatar-small account-button" aria-label="Minha conta" onClick={() => { if (sidebarCollapsed) { hideTip(); setSidebarCollapsed(false); } }} {...tipProps("Minha conta", "r", sidebarCollapsed)}>GC</button>
               <span className="footer-text">
                 <b>Guilherme Cademartori</b>
                 <small>Minha conta <span aria-hidden="true">·</span> <a href="#sair" onClick={(event) => { event.preventDefault(); logout(); }}>Sair</a></small>
@@ -861,6 +929,18 @@ export default function App() {
           </aside>
 
           <button className="close" onClick={closeAssistant} aria-label="Fechar assistente">×</button>
+          <button className="resize-handle" onPointerDown={startResize} onDoubleClick={() => setSize(null)} aria-label="Redimensionar janela (duplo clique restaura)" title="Arraste para redimensionar">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5 5 12M12 9l-3 3" /></svg>
+          </button>
+          {panel && (
+            <section className="panel-view" aria-label={panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
+              <button className="panel-back" onClick={() => setPanel(null)}>← Voltar ao chat</button>
+              <h2>{panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}</h2>
+              <p className="panel-placeholder">{panel === "about"
+                ? "[Texto de marcação] Conteúdo da tela “Sobre a ANBY” a ser inserido conforme o design."
+                : "[Texto de marcação] Conteúdo de “Conectar no Claude” a ser definido."}</p>
+            </section>
+          )}
           {tip && <div className={`side-tip ${tip.dir}`} style={{ top: tip.top, left: tip.left }} role="tooltip">{tip.text}</div>}
           <div className={active === 4 ? "chat-home rich-chat" : "chat-home"}>
             {!hasConversation && <div className="intro">
@@ -883,7 +963,7 @@ export default function App() {
             )}
 
             {hasConversation && (
-              <div className={conversationOverflows ? "conversation-viewport has-overflow" : "conversation-viewport"}>
+              <div className="conversation-viewport has-overflow">
               <div className="conversation-scroll" aria-live="polite" ref={conversationRef}>
                 {entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse />) : active === 4 ? <RichMarketResponse /> : (responding || interrupted) && sentQuestion ? (
                   responding
@@ -988,7 +1068,7 @@ export default function App() {
                       {voice === "recording" ? <StopIcon /> : <MicIcon />}
                     </button>
                     {responding ? (
-                      <button className="send-button send-active pause-button" onClick={pauseResponse} aria-label="Pausar resposta"><PauseIcon /></button>
+                      <button className="send-button pause-button" onClick={pauseResponse} aria-label="Parar resposta" {...tipProps("Parar resposta", "l")}><PauseIcon /></button>
                     ) : (
                     <button
                       className={question.trim() && voice === "idle" ? "send-button send-active" : "send-button"}

@@ -711,3 +711,103 @@ h1 em { color: #0095d9; font-style: normal; }
 .mfa-legal { margin: 26px 0 0; color: #7b7b7b; font-size: 11px; line-height: 15px; }
 .mfa-legal a { color: #0095d9; }
 @media (prefers-reduced-motion: reduce) { .mfa-spinner, .anby-launcher span { animation: none !important; transition: none !important; } }
+
+
+/* ===== Ajustes (lista V1.0): fundo em gradiente, menu, sidebar e modal ===== */
+.assistant-overlay .workspace {
+  background: linear-gradient(to top, #fceed1 11%, #fdf7e8 32%, #f6f9f1 52%, #eaf7fe 70%, #d1e8fd 86%, #badbfc 100%);
+  backdrop-filter: none; -webkit-backdrop-filter: none; transform: translateZ(0);
+}
+.composer-area > p { text-align: left; }
+.composer-area > p.transcribed-status { text-align: center; }
+
+/* Sidebar recolhida: avatar, hover e conta */
+.brand-collapsed, .rail-button, .history.collapsed .new-chat { border: 1px solid transparent; box-shadow: none; }
+.brand-collapsed { padding: 0; display: none; place-items: center; }
+.history.collapsed .brand-collapsed { display: grid; }
+.brand-collapsed .history-anby-avatar { width: 32px; height: 32px; aspect-ratio: 1; flex: none; object-fit: cover; }
+.brand-collapsed .brand-unfold { width: 24px; height: 24px; justify-self: center; align-self: center; }
+.rail-button:hover, .rail-button:focus-visible, .brand-collapsed:hover, .brand-collapsed:focus-visible,
+.history.collapsed .new-chat:hover, .history.collapsed .new-chat:focus-visible { background: #e5f4fb; border-color: #0095d9; box-shadow: none; }
+.account-button { border: 1px solid transparent; font: inherit; cursor: default; }
+.history.collapsed .account-button { cursor: pointer; }
+.history.collapsed .account-button:hover, .history.collapsed .account-button:focus-visible { background: #e5f4fb; border-color: #0095d9; }
+
+/* Transição fold ↔ unfold mais suave */
+@media (min-width: 851px) {
+  .assistant { transition: grid-template-columns .45s cubic-bezier(.22, 1, .36, 1); }
+  .history { transition: padding .45s cubic-bezier(.22, 1, .36, 1); }
+  .history:not(.collapsed) .expanded-content, .history.collapsed .collapsed-nav { animation: side-fade .35s ease .12s both; }
+  .assistant > .history { grid-column: 1; grid-row: 1; }
+  .assistant > .chat-home, .assistant > .panel-view { grid-column: 2; grid-row: 1; }
+}
+
+/* Conversas recentes: botão "…" e menu */
+.conversation-menu-trigger { color: #666; }
+.conversation-menu-trigger:hover, .conversation-item.menu-open .conversation-menu-trigger { background: #c9eaf8; color: #0095d9; }
+.conversation-menu-trigger svg { fill: currentColor; stroke: none; }
+.conversation-menu button:not(.delete-action) svg { color: #0095d9; stroke: #0095d9; }
+.conversation-menu button:not(.delete-action):hover { background: #edf7fb; }
+
+/* Painel Sobre / Conectar (no lugar do chat) */
+.panel-view { position: relative; z-index: 4; min-width: 0; padding: 36px 54px; background: #fff; border-radius: 0 12px 12px 0; overflow-y: auto; }
+.panel-view h2 { margin: 20px 0 12px; font-size: 24px; line-height: 30px; }
+.panel-back { padding: 0; border: 0; background: transparent; color: #0095d9; font-size: 13px; font-weight: 700; }
+.panel-placeholder { margin: 0; padding: 16px; border: 1px dashed #b2b5bf; border-radius: 8px; color: #666; font-size: 14px; line-height: 21px; }
+
+/* Resposta com indicadores: só gráfico, tabela e big number ficam no card #F8F9FA */
+.rich-response { padding: 0; background: transparent; border-radius: 0; }
+.chat-table-wrap { padding: 12px; border-radius: 6px; background: #f8f9fa; }
+
+/* Parar resposta */
+.send-button.pause-button, .send-button.pause-button:hover { background: transparent; color: #0095d9; cursor: pointer; }
+.send-button.pause-button:hover { background: #e5f4fb; }
+
+/* Redimensionar modal (desktop) */
+.resize-handle { display: none; }
+@media (min-width: 851px) {
+  .resize-handle { display: block; position: absolute; right: 4px; bottom: 4px; z-index: 6; width: 18px; height: 18px; padding: 2px; border: 0; background: transparent; color: #9aa0a6; cursor: nwse-resize; touch-action: none; }
+  .resize-handle:hover, .resize-handle:focus-visible { color: #0095d9; }
+}
+
+/* Menu de Fundos (hover) sobre o assistente */
+.nav-item { position: static; height: 64px; display: flex; align-items: center; }
+.nav-item > button.nav-open, .nav-item > button:hover { color: #0095d9; }
+.mega-menu { position: absolute; z-index: 36; top: 64px; left: 40px; width: min(1000px, calc(100vw - 80px)); min-height: 336px; display: grid; grid-template-columns: 296px 1fr 300px; background: #fefefe; border-radius: 0 0 8px 8px; box-shadow: 0 14px 28px rgba(0, 0, 0, .16); }
+.mega-menu ul { margin: 0; padding: 0; list-style: none; }
+.mega-sections { border-right: 1px solid #dfdfdf; }
+.mega-sections button { width: 100%; height: 48px; padding: 0 24px 0 40px; display: flex; align-items: center; gap: 8px; border: 0; background: #fefefe; color: #666; font-size: 18px; text-align: left; }
+.mega-sections button span { flex: 1; }
+.mega-sections button.on { color: #0095d9; }
+.mega-sections button:hover { background: #edf7fb; }
+.mega-badge { min-width: 14px; height: 16px; padding: 0 3px; border-radius: 4px; background: #f74a4a; color: #fff; font-size: 10px; font-style: normal; font-weight: 700; line-height: 16px; text-align: center; }
+.mega-items { padding: 12px 8px; }
+.mega-items button { width: 100%; padding: 12px 16px; border: 0; border-radius: 6px; background: transparent; color: #363636; font-size: 16px; text-align: left; }
+.mega-items button:hover { background: #edf7fb; color: #0095d9; }
+.mega-empty { padding: 16px; color: #7b7b7b; font-size: 14px; }
+.mega-promo { margin: 16px; padding: 20px; border-radius: 8px; background: #edf7fb; display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; }
+.mega-promo p { margin: 0; color: #363636; font-size: 16px; line-height: 22px; }
+.mega-promo button { align-self: flex-start; height: 40px; padding: 0 22px; border: 0; border-radius: 6px; background: #0095d9; color: #fff; font-weight: 700; }
+
+/* Modal de acesso: barra de progresso e campos de código */
+.mfa-progress { height: 4px; margin-top: 14px; border-radius: 2px; background: #e6e6e6; overflow: hidden; }
+.mfa-progress i { display: block; height: 100%; background: #0095d9; transition: width .3s ease; }
+.mfa-step { margin-top: 8px; }
+.mfa-otp { margin: 0 0 16px; padding: 0; border: 0; }
+.mfa-otp legend { margin-bottom: 8px; padding: 0; font-size: 13px; font-weight: 700; }
+.mfa-otp-row { display: flex; gap: 10px; }
+.mfa-otp-row input { width: 100%; min-width: 0; height: 56px; padding: 0; border: 1px solid #d4d4d4; border-radius: 8px; background: #fff; color: #363636; font: inherit; font-size: 22px; text-align: center; }
+.mfa-otp-row input:focus { border-color: #0095d9; outline: 0; box-shadow: 0 0 0 3px rgba(0, 149, 217, .16); }
+.mfa-otp-row input.invalid { border-color: #bd3232; }
+.mfa-otp-row input:disabled { background: #f0f1f2; }
+.mfa-otp small { display: block; margin-top: 6px; color: #bd3232; font-size: 12px; }
+
+/* Mobile: modal ocupa a largura toda e só o header fica visível */
+@media (max-width: 850px) {
+  .assistant-overlay .workspace { padding: 0; }
+  .assistant { width: 100%; height: 100%; border-radius: 0; }
+  .assistant .close { right: 10px; top: 10px; z-index: 6; }
+  .panel-view { position: absolute; inset: 0; border-radius: 0; padding: 64px 20px 24px; }
+  .mega-menu { left: 0; width: 100vw; grid-template-columns: 1fr; }
+  .mega-items, .mega-promo { display: none; }
+}
