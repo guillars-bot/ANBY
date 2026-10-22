@@ -79,6 +79,141 @@ const imaBRows = [
   ["set/2026 (30/09)", "+2,01%", "11.849,51", 2.01],
 ] as const;
 
+type MenuDef = { key: string; label: string; sections: string[]; counter?: string; items: { label: string; badge?: string }[]; promo: { tag?: string; text: string } };
+const API_PROMO = "Consuma dados de mercado via API de forma automatizada.";
+const DATA_SECTIONS = ["Dados em tela", "Publicações", "Preços", "Índices", "Datasets (via arquivo)", "Datasets (via API)"];
+const MENUS: MenuDef[] = [
+  { key: "fundos", label: "Fundos", sections: DATA_SECTIONS, counter: "1", promo: { text: API_PROMO },
+    items: [{ label: "Fundos (RCVM-175)", badge: "NOVO" }, { label: "Taxas de FIDCs" }, { label: "Dados de negociação (prévias do REUNE)" }, { label: "Painel de preços de renda fixa" }, { label: "Transparência de taxas de fundos" }] },
+  { key: "privados", label: "Títulos Privados", sections: [...DATA_SECTIONS, "Ferramentas"], promo: { text: API_PROMO },
+    items: [{ label: "Debêntures" }, { label: "Taxas de certificados de recebíveis (CRI e CRA)" }, { label: "Taxas de letras financeiras" }, { label: "Dados de negociação (prévias do REUNE)" }, { label: "Painel de preços de renda fixa" }, { label: "Curvas de crédito" }] },
+  { key: "publicos", label: "Títulos Públicos", sections: [...DATA_SECTIONS, "Ferramentas"], promo: { text: API_PROMO },
+    items: [{ label: "Monitoramento intradiário de títulos públicos federais" }, { label: "Títulos públicos" }, { label: "Valor nominal atualizado (VNA)" }] },
+  { key: "mais", label: "Mais", sections: ["Distribuição", "Macroeconômico", "Análises de mercado", "Carteiras administradas", "Datasets (via API)"],
+    promo: { tag: "NOVIDADE", text: "Uma nova forma de buscar informações e conteúdos sobre o mercado financeiro." },
+    items: [{ label: "Boletim de private e varejo" }, { label: "Estatísticas de gestores de patrimônio" }, { label: "Estatísticas de private" }, { label: "Estatísticas de varejo" }, { label: "Estatísticas de distribuição" }] },
+];
+
+function MegaMenu({ menu }: { menu: MenuDef }) {
+  const [section, setSection] = useState(0);
+  return (
+    <div className="mega-menu" role="menu">
+      <ul className="mega-sections">
+        {menu.sections.map((label, index) => (
+          <li key={label}>
+            <button className={section === index ? "on" : ""} onMouseEnter={() => setSection(index)} onFocus={() => setSection(index)} role="menuitem">
+              <span>{label}</span>
+              {index === 0 && menu.counter && <i className="mega-badge">{menu.counter}</i>}
+              {section === index && <svg width="11" height="8" viewBox="0 0 11 8" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m1 1.5 4.5 4.5L10 1.5" /></svg>}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <ul className="mega-items">
+        {menu.items.map((item) => (
+          <li key={item.label}><button role="menuitem"><span>{item.label}</span>{item.badge && <i className="mega-new">{item.badge}</i>}</button></li>
+        ))}
+      </ul>
+      <div className="mega-promo">
+        <div className="mega-card">
+          {menu.promo.tag && <span className="mega-tag">{menu.promo.tag}</span>}
+          <p>{menu.promo.text}</p>
+          <button>Acessar <svg width="18" height="12" viewBox="0 0 18 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 6h15M11 1l5 5-5 5" /></svg></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AboutPanel() {
+  return (
+    <div className="about">
+      <div className="about-note">
+        <InfoIcon />
+        <div>
+          <p>A ANBY consiste em sistema de inteligência artificial desenvolvido pela Anbima para auxiliar nas dúvidas relacionadas à autorregulação da associação.</p>
+          <p>Apesar de todo o esforço para assegurar a exatidão e a atualização das respostas, as informações fornecidas têm fins exclusivamente informativos, podendo conter imprecisões, omissões e/ou interpretações equivocadas.</p>
+          <p>As respostas fornecidas pela ANBY não constituem, nem devem ser interpretadas como aconselhamento, consultoria, parecer ou orientação de natureza profissional, jurídica e/ou financeira, tampouco como recomendação, conselho, indicação, sugestão, aviso ou garantia de resultado da Anbima.</p>
+          <p>Para quaisquer tomadas de decisão, recomenda-se a verificação independente das informações e a consulta a profissionais habilitados, bem como as fontes oficiais.</p>
+        </div>
+      </div>
+      <h2>Eu sou a ANBY!</h2>
+      <p className="about-sub">Sua assistente virtual de autorregulação da Anbima</p>
+      <p>Estou aqui para tornar mais simples o seu dia a dia com os códigos, regras e procedimentos da autorregulação. Se você tiver dificuldade para encontrar alguma informação nessa documentação, pode contar comigo!</p>
+      <p>Por enquanto, meu foco é exclusivamente em autorregulação. Isso significa que alguns assuntos ainda estão fora do meu alcance, como: dados de mercado, dúvidas sobre exames de certificação, orientações regulatórias ou jurídicas que não constem nos documentos da Anbima.</p>
+      <p>Para outras questões, acesse <a href="https://www.anbima.com.br" target="_blank" rel="noreferrer">www.anbima.com.br</a></p>
+      <hr />
+      <h3>Não ficou satisfeito com alguma resposta?</h3>
+      <p>Durante nossa interação no chat, utilize as ferramentas de feedback disponíveis para avaliar a utilidade da resposta. Assim, você contribui para o meu aprimoramento.</p>
+      <div className="about-step">
+        <div className="about-shot" aria-hidden="true" />
+        <div><span className="about-num">1</span><p>As ferramentas de feedback estão localizadas ao fim de cada resposta.</p><p>A caixa de comentários é ativada quando você seleciona “Resposta insatisfatória”.</p></div>
+      </div>
+      <div className="about-step">
+        <div className="about-shot" aria-hidden="true" />
+        <div><span className="about-num">2</span><p>No espaço de comentários, selecione o motivo e compartilhe sugestões detalhadas sobre o que poderia melhorar na resposta.</p></div>
+      </div>
+    </div>
+  );
+}
+
+function ConnectPanel() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const desktopConfig = `{
+  "mcpServers": {
+    "anby-data": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://abda.liqi.com.br/mcp",
+               "--header", "Authorization: Bearer SEU_TOKEN"]
+    }
+  }
+}`;
+  return (
+    <div className="connect">
+      <h2>Conectar no Anby Data via MCP</h2>
+      <p className="connect-lead">Conecte a Anby Data ao seu Claude (Claude Code ou Claude Desktop) e faça perguntas — e baterias de teste — direto pelo assistente, via MCP (Model Context Protocol).</p>
+      <section className="connect-card">
+        <h3>O que é</h3>
+        <p>Um servidor MCP que expõe a ferramenta <b>perguntar_anby</b>: você (ou o seu Claude) manda uma pergunta e recebe a resposta da Anby Data — os mesmos dados e o mesmo comportamento do chat (fundos, títulos públicos, crédito privado, índices ANBIMA, curvas, projeções, Selic), sempre com fonte e data. Ideal para rodar baterias de teste automatizadas (cobertura de dados, recusas, prompt injection, segurança).</p>
+        <p><b>Endpoint:</b> <a href="https://abda.liqi.com.br/mcp" target="_blank" rel="noreferrer">https://abda.liqi.com.br/mcp</a> · transporte <b>HTTP (Streamable)</b> · autenticação <b>Bearer token</b>.</p>
+      </section>
+      <section className="connect-card">
+        <h3>🔑 Gerar o seu token</h3>
+        <p>Digite o e-mail com que você acessa a Anby Data. Se ele estiver na lista de acesso, o token chega nesse e-mail em instantes. Nos comandos abaixo, troque <code>SEU_TOKEN</code> pelo token recebido.</p>
+        <form className="connect-form" onSubmit={(event) => { event.preventDefault(); if (valid) setSent(true); }}>
+          <input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setSent(false); }} placeholder="seu.nome@anbima.com.br" aria-label="E-mail de acesso" />
+          <button type="submit" disabled={!valid}>Enviar meu token</button>
+        </form>
+        {sent && <p className="connect-sent" role="status">Solicitação registrada. Se o e-mail estiver na lista de acesso, o token chega em instantes. (Protótipo: nenhum e-mail é enviado.)</p>}
+        <small>O token é pessoal: as perguntas feitas com ele ficam registradas no seu nome e contam no mesmo limite de uso do chat. Vale por 90 dias. Pedir um novo não cancela o anterior. Se o seu e-mail sair da lista de acesso, o token deixa de funcionar. Não compartilhe o token; se ele vazar, peça à equipe da Liqi para cancelá-lo.</small>
+      </section>
+      <h3 className="connect-h">Claude Code (terminal)</h3>
+      <section className="connect-card">
+        <div className="connect-step"><i>1</i><div><p>No terminal, adicione o servidor:</p>
+          <pre><code>{`claude mcp add --transport http anby-data https://abda.liqi.com.br/mcp \\
+  --header "Authorization: Bearer SEU_TOKEN"`}</code></pre></div></div>
+        <div className="connect-step"><i>2</i><div><p>Abra o Claude e use naturalmente: <em>“pergunte à Anby a estimativa da Selic de hoje”</em> ou <em>“rode uma bateria de perguntas de dados na Anby”</em>. O Claude chamará a tool <code>perguntar_anby</code> sozinho.</p></div></div>
+      </section>
+      <h3 className="connect-h">Claude Desktop</h3>
+      <section className="connect-card">
+        <div className="connect-step"><i>1</i><div><p>Em <b>Settings → Developer → Edit Config</b>, adicione (usa o conector <code>mcp-remote</code> para transporte HTTP com header):</p>
+          <pre><code>{desktopConfig}</code></pre></div></div>
+        <div className="connect-step"><i>2</i><div><p>Reinicie o Claude Desktop. A ferramenta <b>perguntar_anby</b> aparecerá disponível.</p></div></div>
+      </section>
+      <h3 className="connect-h">A ferramenta</h3>
+      <div className="connect-tool">
+        <b>perguntar_anby(mensagem, sessionId?)</b>
+        <p>• <b>mensagem</b> — a pergunta (em qualquer idioma; a Anby responde em pt-BR).</p>
+        <p>• <b>sessionId</b> (opcional) — para continuar uma conversa (teste multi-turno). Use um prefixo único por testador.</p>
+        <p>Retorna a resposta da Anby + <code>sessionId</code>, número de consultas à base e latência.</p>
+      </div>
+      <p className="connect-warn">Cada pergunta feita pelo MCP fica registrada no nome de quem pediu o token, como no chat. As respostas têm finalidade informativa; não constituem recomendação de investimento. Dúvidas? Fale com a equipe da Liqi.</p>
+    </div>
+  );
+}
+
 function MicIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -435,8 +570,12 @@ export default function App() {
   const [mfaOpen, setMfaOpen] = useState(false);
   const [panel, setPanel] = useState<null | "about" | "connect">(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuSection, setMenuSection] = useState(0);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [mobileSection, setMobileSection] = useState<string | null>(null);
+  const menuTimer = useRef<number | undefined>(undefined);
+  const openMenu = (key: string) => { window.clearTimeout(menuTimer.current); setMenuOpen(key); };
+  const scheduleCloseMenu = () => { window.clearTimeout(menuTimer.current); menuTimer.current = window.setTimeout(() => setMenuOpen(null), 120); };
   const [responding, setResponding] = useState(false);
   const [thinkStage, setThinkStage] = useState(0);
   const [interrupted, setInterrupted] = useState(false);
@@ -707,39 +846,39 @@ export default function App() {
             <img className="brand" src={`${A}/d19e1.svg`} alt="ANBIMA Data" />
           </button>
           <nav aria-label="Navegação principal">
-            <div className="nav-item" onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false); }}>
-              <button className={menuOpen ? "nav-open" : ""} aria-expanded={menuOpen} aria-haspopup="true" onClick={() => setMenuOpen(!menuOpen)}>Fundos <img src={`${A}/7facb.svg`} alt="" /></button>
-              {menuOpen && (
-                <div className="mega-menu" role="menu">
-                  <ul className="mega-sections">
-                    {["Dados em tela", "Publicações", "Preços", "Índices", "Datasets (via arquivo)", "Datasets (via API)"].map((label, index) => (
-                      <li key={label}>
-                        <button className={menuSection === index ? "on" : ""} onMouseEnter={() => setMenuSection(index)} onFocus={() => setMenuSection(index)} role="menuitem">
-                          <span>{label}</span>
-                          {index === 0 && <i className="mega-badge">1</i>}
-                          <svg width="11" height="8" viewBox="0 0 11 8" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m1 1.5 4.500 4.500L10 1.500" /></svg>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  <ul className="mega-items">
-                    {menuSection === 0 ? ["Fundos (RCVM-175)", "Taxas de FIDCs", "Dados de negociação (prévias do REUNE)", "Painel de preços de renda fixa", "Transparência de taxas de fundos"].map((label) => (
-                      <li key={label}><button role="menuitem">{label}</button></li>
-                    )) : <li className="mega-empty">Conteúdo deste submenu fora do escopo do protótipo.</li>}
-                  </ul>
-                  <div className="mega-promo">
-                    <p>Consuma dados de mercado via API de forma automatizada.</p>
-                    <button>Acessar</button>
-                  </div>
-                </div>
-              )}
-            </div>
-            <button>Títulos Privados <img src={`${A}/7facb.svg`} alt="" /></button>
-            <button>Títulos Públicos <img src={`${A}/7facb.svg`} alt="" /></button>
-            <button>Mais <img src={`${A}/7facb.svg`} alt="" /></button>
+            {MENUS.map((menu) => (
+              <div
+                key={menu.key}
+                className="nav-item"
+                onMouseEnter={() => openMenu(menu.key)}
+                onMouseLeave={scheduleCloseMenu}
+                onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) scheduleCloseMenu(); }}
+              >
+                <button className={menuOpen === menu.key ? "nav-open" : ""} aria-expanded={menuOpen === menu.key} aria-haspopup="true" onClick={() => (menuOpen === menu.key ? setMenuOpen(null) : openMenu(menu.key))}>
+                  <span className="nav-label">{menu.label}</span><img src={`${A}/7facb.svg`} alt="" />
+                </button>
+                {menuOpen === menu.key && <MegaMenu menu={menu} />}
+              </div>
+            ))}
           </nav>
         </div>
         <button className="header-search" aria-label="Buscar"><img src={`${A}/fe6a2.svg`} alt="" /></button>
+        <button className="menu-toggle" aria-label={mobileMenu ? "Fechar menu" : "Abrir menu"} aria-expanded={mobileMenu} onClick={() => { setMobileMenu(!mobileMenu); setMobileSection(null); }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">{mobileMenu ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}</svg>
+        </button>
+        {mobileMenu && (
+          <div className="mob-menu">
+            {MENUS.map((menu) => (
+              <div key={menu.key} className="mob-section">
+                <button aria-expanded={mobileSection === menu.key} onClick={() => setMobileSection(mobileSection === menu.key ? null : menu.key)}>
+                  <span>{menu.label}</span>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={mobileSection === menu.key ? "up" : ""}><path d="m6 9 6 6 6-6" /></svg>
+                </button>
+                {mobileSection === menu.key && <ul>{menu.items.map((item) => <li key={item.label}><button>{item.label}</button></li>)}</ul>}
+              </div>
+            ))}
+          </div>
+        )}
       </header>
 
       <PortalHome onOpenAssistant={openAssistant} />
@@ -808,6 +947,7 @@ export default function App() {
           setMfaOpen(true);
         }}
       >
+          {drawerOpen && <button className="scrim" onClick={() => setDrawerOpen(false)} aria-label="Fechar histórico" />}
           <button className="mobile-history" onClick={() => setDrawerOpen(true)} aria-label="Abrir histórico">
             <span></span><span></span><span></span>
           </button>
@@ -935,10 +1075,7 @@ export default function App() {
           {panel && (
             <section className="panel-view" aria-label={panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
               <button className="panel-back" onClick={() => setPanel(null)}>← Voltar ao chat</button>
-              <h2>{panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}</h2>
-              <p className="panel-placeholder">{panel === "about"
-                ? "[Texto de marcação] Conteúdo da tela “Sobre a ANBY” a ser inserido conforme o design."
-                : "[Texto de marcação] Conteúdo de “Conectar no Claude” a ser definido."}</p>
+              {panel === "about" ? <AboutPanel /> : <ConnectPanel />}
             </section>
           )}
           {tip && <div className={`side-tip ${tip.dir}`} style={{ top: tip.top, left: tip.left }} role="tooltip">{tip.text}</div>}
@@ -1103,7 +1240,6 @@ export default function App() {
         </div>
         )}
       </section>
-      {drawerOpen && <button className="scrim" onClick={() => setDrawerOpen(false)} aria-label="Fechar histórico" />}
       {feedbackOpen && (
         <div className="feedback-backdrop" role="presentation">
           <section className="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
