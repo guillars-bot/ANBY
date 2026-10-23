@@ -903,3 +903,19 @@ h1 em { color: #0095d9; font-style: normal; }
 .connect-tool p { margin: 4px 0 0; }
 .connect-warn { margin-top: 16px !important; padding: 14px 18px; border: 1px solid #f1e0a6; border-radius: 8px; background: #fff8e1; color: #6b5300; }
 @media (max-width: 850px) { .panel-view { padding: 56px 20px 32px; } .about-step { flex-direction: column; gap: 12px; } .about-shot { width: 100%; } .connect-form { flex-direction: column; } }
+
+
+/* ===== Ajustes: ícones do drawer (mobile) e "Voltar ao chat" fixo ===== */
+.panel-view { padding: 0; overflow-y: auto; min-height: 0; }
+.panel-bar { position: sticky; top: 0; z-index: 5; padding: 20px 40px 12px; background: #fff; }
+.panel-body { padding: 4px 40px 40px; }
+@media (min-width: 851px) { .assistant { grid-template-rows: minmax(0, 1fr); } }
+@media (max-width: 850px) {
+  .mobile-history { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; gap: 0; left: 14px; top: 14px; border-radius: 8px; }
+  .mobile-history img, .drawer-close img { width: 24px; height: 24px; }
+  .drawer-close { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; right: 18px; top: 28px; border-radius: 8px; }
+  .history .sidebar-toggle { display: none; }
+  .panel-view { padding: 0; }
+  .panel-bar { padding: 16px 72px 12px 20px; box-shadow: 0 1px 0 #ededed; }
+  .panel-body { padding: 4px 20px 32px; }
+}

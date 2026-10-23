@@ -948,15 +948,15 @@ export default function App() {
         }}
       >
           {drawerOpen && <button className="scrim" onClick={() => setDrawerOpen(false)} aria-label="Fechar histórico" />}
-          <button className="mobile-history" onClick={() => setDrawerOpen(true)} aria-label="Abrir histórico">
-            <span></span><span></span><span></span>
+          <button className="mobile-history" onClick={() => setDrawerOpen(true)} aria-label="Expandir barra lateral">
+            <img src={`${A}/e2d38.svg`} alt="" />
           </button>
 
           <aside className={`${drawerOpen ? "history open" : "history"}${sidebarCollapsed ? " collapsed" : ""}`} aria-label="Histórico de conversas">
-            <button className="drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Fechar histórico">×</button>
+            <button className="drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Recolher barra lateral"><img src={`${A}/a4d07.svg`} alt="" /></button>
             <div className="history-fixed">
               <div className="history-brand">
-                <div className="brand-expanded"><img className="history-anby-avatar" src={`${A}/54cd1.png`} alt="" /><img className="history-anby-logo" src={`${A}/3dd9a.png`} alt="ANBY" /></div>
+                <div className="brand-expanded"><img className="history-anby-avatar" src={`${A}/54cd1.png`} alt="" /><img className="history-anby-logo" src={`${A}/anby-logo.png`} alt="ANBY" /></div>
                 <button
                   className="sidebar-toggle"
                   onClick={() => { hideTip(); setSidebarCollapsed(true); }}
@@ -1074,8 +1074,8 @@ export default function App() {
           </button>
           {panel && (
             <section className="panel-view" aria-label={panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
-              <button className="panel-back" onClick={() => setPanel(null)}>← Voltar ao chat</button>
-              {panel === "about" ? <AboutPanel /> : <ConnectPanel />}
+              <div className="panel-bar"><button className="panel-back" onClick={() => setPanel(null)}>← Voltar ao chat</button></div>
+              <div className="panel-body">{panel === "about" ? <AboutPanel /> : <ConnectPanel />}</div>
             </section>
           )}
           {tip && <div className={`side-tip ${tip.dir}`} style={{ top: tip.top, left: tip.left }} role="tooltip">{tip.text}</div>}
