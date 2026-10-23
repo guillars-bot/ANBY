@@ -1,0 +1,14 @@
+{
+  "title": "Anby- Assistente ANBIMA",
+  "description": "Enables users to manage AI assistant interactions with a recent conversation history and quick access to start new chats for seamless communication.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  },
+  "icons": {
+    "icon": "/favicon.png"
+  }
+}
