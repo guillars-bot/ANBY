@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import MfaModal from "./MfaModal";
-import { clearSession, firstName, loadSession, saveSession, type Session } from "./session";
+import { clearSession, firstName, initials, loadSession, saveSession, type Session } from "./session";
 
 const A = "/assets";
 
@@ -542,11 +542,13 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [sentQuestion, setSentQuestion] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [liked, setLiked] = useState(false);
+  // Ações por resposta (índice 0 = primeira resposta, 1+ = respostas seguintes da conversa).
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [ratings, setRatings] = useState<Record<number, "up" | "down">>({});
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState<"first" | "second" | null>(null);
-  const [feedbackTarget, setFeedbackTarget] = useState<"first" | "second">("first");
+  const [feedbackTarget, setFeedbackTarget] = useState(0);
+  // Pergunta clicada antes do login: é enviada automaticamente após a validação.
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [feedbackReason, setFeedbackReason] = useState("");
   const [feedbackDetails, setFeedbackDetails] = useState("");
   const [termsOpen, setTermsOpen] = useState(false);
@@ -589,9 +591,8 @@ export default function App() {
     setSentQuestion("");
     setResponding(false);
     setInterrupted(false);
-    setCopied(false);
-    setLiked(false);
-    setFeedbackSent(null);
+    setCopiedIndex(null);
+    setRatings({});
     setDrawerOpen(false);
   };
 
@@ -662,15 +663,57 @@ export default function App() {
 
   const recordingTime = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
-  const copyAnswer = async () => {
-    await navigator.clipboard?.writeText("A ANBIMA acompanha a evolução da indústria e reúne dados consolidados para apoiar sua análise.");
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+  const copyAnswer = async (index: number, text: string) => {
+    try { await navigator.clipboard?.writeText(text); } catch { /* clipboard indisponível */ }
+    setCopiedIndex(index);
+    window.setTimeout(() => setCopiedIndex((current) => (current === index ? null : current)), 1800);
+  };
+
+  const toggleLike = (index: number) => {
+    setRatings((current) => {
+      const next = { ...current };
+      if (next[index] === "up") delete next[index]; else next[index] = "up";
+      return next;
+    });
+  };
+
+  const openFeedback = (index: number) => {
+    setFeedbackTarget(index);
+    setFeedbackOpen(true);
+  };
+
+  const renderActions = (index: number, text: string) => {
+    const copiedHere = copiedIndex === index;
+    const rating = ratings[index];
+    return (
+      <div className="response-actions" aria-label="Ações da resposta">
+        <button onClick={() => copyAnswer(index, text)} data-tooltip={copiedHere ? "Copiado!" : "Copiar"} aria-label={copiedHere ? "Resposta copiada" : "Copiar resposta"}>
+          <img src={`${A}/${copiedHere ? "bddb2.svg" : "6030c.svg"}`} alt="" />
+        </button>
+        <button
+          className={rating === "up" ? "selected" : ""}
+          onClick={() => toggleLike(index)}
+          data-tooltip="Resposta satisfatória"
+          aria-label="Marcar resposta como satisfatória"
+          aria-pressed={rating === "up"}
+        >
+          <img src={`${A}/${rating === "up" ? "757a8.svg" : "4a340.svg"}`} alt="" />
+        </button>
+        <button
+          className={rating === "down" ? "selected" : ""}
+          onClick={() => openFeedback(index)}
+          data-tooltip="Resposta insatisfatória"
+          aria-label="Marcar resposta como insatisfatória"
+          aria-pressed={rating === "down"}
+        >
+          <img src={`${A}/${rating === "down" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
+        </button>
+      </div>
+    );
   };
 
   const closeFeedback = () => {
     setFeedbackOpen(false);
-    setFeedbackSent(null);
     setFeedbackReason("");
     setFeedbackDetails("");
   };
@@ -678,8 +721,7 @@ export default function App() {
   const submitFeedback = () => {
     if (!feedbackReason) return;
     setFeedbackOpen(false);
-    setFeedbackSent(feedbackTarget);
-    setLiked(false);
+    setRatings((current) => ({ ...current, [feedbackTarget]: "down" }));
     setFeedbackReason("");
     setFeedbackDetails("");
   };
@@ -776,6 +818,10 @@ export default function App() {
     setSession({ ...data, at: Date.now() });
     setSessionExpired(false);
     setMfaOpen(false);
+    if (pendingQuestion) {
+      askQuestion(pendingQuestion);
+      setPendingQuestion(null);
+    }
   };
 
   const logout = () => {
@@ -944,6 +990,8 @@ export default function App() {
           if (window.matchMedia("(max-width: 850px)").matches && target.closest(".history")) return;
           event.preventDefault();
           event.stopPropagation();
+          const suggestion = target.closest<HTMLElement>("[data-question]");
+          setPendingQuestion(suggestion?.dataset.question ?? null);
           setMfaOpen(true);
         }}
       >
@@ -1060,9 +1108,9 @@ export default function App() {
             </div>
             </div>
             <div className="history-footer">
-              <button className="avatar-small account-button" aria-label="Minha conta" onClick={() => { if (sidebarCollapsed) { hideTip(); setSidebarCollapsed(false); } }} {...tipProps("Minha conta", "r", sidebarCollapsed)}>GC</button>
+              <button className="avatar-small account-button" aria-label="Minha conta" onClick={() => { if (sidebarCollapsed) { hideTip(); setSidebarCollapsed(false); } }} {...tipProps("Minha conta", "r", sidebarCollapsed)}>{session ? initials(session.name) : "?"}</button>
               <span className="footer-text">
-                <b>Guilherme Cademartori</b>
+                <b>{session ? session.name.trim() : "Visitante"}</b>
                 <small>Minha conta <span aria-hidden="true">·</span> <a href="#sair" onClick={(event) => { event.preventDefault(); logout(); }}>Sair</a></small>
               </span>
             </div>
@@ -1090,7 +1138,7 @@ export default function App() {
                 <p>Faça uma pergunta ou tente um exemplo:</p>
                 <div className="question-list">
                   {suggestions.slice(0, 4).map((text) => (
-                    <button key={text} onClick={() => askQuestion(text)}>
+                    <button key={text} data-question={text} onClick={() => askQuestion(text)}>
                       <span>{text}</span>
                       <img src={`${A}/70745.svg`} alt="" />
                     </button>
@@ -1117,27 +1165,7 @@ export default function App() {
                   <img src={`${A}/54cd1.png`} alt="ANBY" />
                   <div className="ai-content">
                     <p>{currentDialogue.answer}</p>
-                    <div className="response-actions" aria-label="Ações da resposta">
-                      <button onClick={copyAnswer} data-tooltip={copied ? "Copiado!" : "Copiar"} aria-label={copied ? "Resposta copiada" : "Copiar resposta"}>
-                        <img src={`${A}/${copied ? "bddb2.svg" : "6030c.svg"}`} alt="" />
-                      </button>
-                      <button
-                        className={liked ? "selected" : ""}
-                        onClick={() => { setLiked(!liked); setFeedbackSent(null); }}
-                        data-tooltip="Resposta satisfatória"
-                        aria-label="Marcar resposta como satisfatória"
-                      >
-                        <img src={`${A}/${liked ? "757a8.svg" : "4a340.svg"}`} alt="" />
-                      </button>
-                      <button
-                        className={feedbackSent === "first" ? "selected" : ""}
-                        onClick={() => { setFeedbackTarget("first"); setFeedbackOpen(true); }}
-                        data-tooltip="Resposta insatisfatória"
-                        aria-label="Marcar resposta como insatisfatória"
-                      >
-                        <img src={`${A}/${feedbackSent === "first" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
-                      </button>
-                    </div>
+                    {renderActions(0, currentDialogue.answer)}
                   </div>
                 </div>
                 <div className="user-row second-message">
@@ -1147,21 +1175,10 @@ export default function App() {
                   <img src={`${A}/54cd1.png`} alt="ANBY" />
                   <div className="ai-content">
                     <p>{currentDialogue.followups[0][1]}</p>
-                    <div className="response-actions">
-                      <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-                      <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-                      <button
-                        className={feedbackSent === "second" ? "selected" : ""}
-                        onClick={() => { setFeedbackTarget("second"); setFeedbackOpen(true); }}
-                        data-tooltip="Resposta insatisfatória"
-                        aria-label="Resposta insatisfatória"
-                      >
-                        <img src={`${A}/${feedbackSent === "second" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
-                      </button>
-                    </div>
+                    {renderActions(1, currentDialogue.followups[0][1])}
                   </div>
                 </div>
-                {currentDialogue.followups.slice(1).map(([followupQuestion, followupAnswer]: string[]) => (
+                {currentDialogue.followups.slice(1).map(([followupQuestion, followupAnswer]: string[], followupIndex: number) => (
                   <div className="dialogue-pair" key={followupQuestion}>
                     <div className="user-row">
                       <p>{followupQuestion}</p>
@@ -1170,11 +1187,7 @@ export default function App() {
                       <img src={`${A}/54cd1.png`} alt="ANBY" />
                       <div className="ai-content">
                         <p>{followupAnswer}</p>
-                        <div className="response-actions">
-                          <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-                          <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-                          <button data-tooltip="Resposta insatisfatória" aria-label="Resposta insatisfatória"><img src={`${A}/4e98f.svg`} alt="" /></button>
-                        </div>
+                        {renderActions(followupIndex + 2, followupAnswer)}
                       </div>
                     </div>
                   </div>

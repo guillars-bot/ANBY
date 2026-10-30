@@ -347,6 +347,8 @@ h1 em { color: #0095d9; font-style: normal; }
   scrollbar-width: thin;
   scrollbar-color: rgba(102, 102, 102, .24) transparent;
 }
+/* Folga no fim da rolagem para o degradê inferior não cobrir as ações da última resposta. */
+.conversation-viewport.has-overflow .conversation-scroll { padding-bottom: 84px; }
 .conversation-scroll::-webkit-scrollbar { width: 6px; }
 .conversation-scroll::-webkit-scrollbar-track { background: transparent; }
 .conversation-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(102, 102, 102, .24); }
@@ -513,6 +515,7 @@ h1 em { color: #0095d9; font-style: normal; }
   .conversation-scroll { padding-top: 8px; }
   .conversation-viewport.has-overflow::before { height: 76px; }
   .conversation-viewport.has-overflow::after { height: 60px; }
+  .conversation-viewport.has-overflow .conversation-scroll { padding-bottom: 64px; }
   .history {
     position: fixed; z-index: 20; inset: 0 auto 0 0; width: 290px; border-radius: 0;
     transform: translateX(-100%); transition: transform .25s ease; box-shadow: 10px 0 30px rgba(0,0,0,.18);
@@ -911,7 +914,7 @@ h1 em { color: #0095d9; font-style: normal; }
 .panel-body { padding: 4px 40px 40px; }
 @media (min-width: 851px) { .assistant { grid-template-rows: minmax(0, 1fr); } }
 @media (max-width: 850px) {
-  .mobile-history { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; gap: 0; left: 14px; top: 14px; border-radius: 8px; }
+  .mobile-history { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; gap: 0; left: 14px; top: 14px; border-radius: 8px; background: #fff; }
   .mobile-history img, .drawer-close img { width: 24px; height: 24px; }
   .drawer-close { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; right: 18px; top: 28px; border-radius: 8px; }
   .history .sidebar-toggle { display: none; }

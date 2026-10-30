@@ -17,7 +17,7 @@ npm run dev
 - Modal do assistente 1200 × 660; sidebar 280 px (aberta) e 72 px (recolhida), transição deslizante, tooltips e zonas fixas/rolável.
 - Botão flutuante com tooltip à esquerda apenas no hover; abrir/fechar integra o botão voltar do navegador.
 - Sem sessão, qualquer clique no chat (exceto fechar e menu) abre o modal de dados pessoais:
-  validação de nome (2+ palavras) e e-mail (`@` e `.com`) ao sair do campo, loading no botão, passo 2 com código,
+  validação de nome (2+ palavras) e e-mail (formato válido, qualquer domínio: .com, .com.br, .org.br, .gov.br…) ao sair do campo, loading no botão, passo 2 com código,
   timer de reenvio (1:00), limite de 5 tentativas (bloqueio de 15:00) e retomada exata ao fechar/reabrir.
 - Sessão de 30 dias no navegador (`localStorage`) e saudação com o primeiro nome. "Sair" encerra a sessão.
 - Chat: pausa de resposta (campo desabilitado + mensagem de interrompida), degradê no scroll, cards `#F8F9FA` sem contorno/sombra nos indicadores,
