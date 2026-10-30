@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import MfaModal from "./MfaModal";
 import { features } from "./features";
+import { SCENARIOS, SCENARIO_GROUPS, findScenario, type MfaPreset, type Scenario } from "./scenarios";
 import { clearSession, firstName, initials, loadSession, saveSession, type Session } from "./session";
 
 const A = "/assets";
@@ -198,16 +199,16 @@ function ConnectPanel() {
 }`;
   return (
     <div className="connect">
-      <h2>Conectar no Anby Data via MCP</h2>
-      <p className="connect-lead">Conecte a Anby Data ao seu Claude (Claude Code ou Claude Desktop) e faça perguntas — e baterias de teste — direto pelo assistente, via MCP (Model Context Protocol).</p>
+      <h2>Conectar no ANBY Data via MCP</h2>
+      <p className="connect-lead">Conecte a ANBY Data ao seu Claude (Claude Code ou Claude Desktop) e faça perguntas — e baterias de teste — direto pelo assistente, via MCP (Model Context Protocol).</p>
       <section className="connect-card">
         <h3>O que é</h3>
-        <p>Um servidor MCP que expõe a ferramenta <b>perguntar_anby</b>: você (ou o seu Claude) manda uma pergunta e recebe a resposta da Anby Data — os mesmos dados e o mesmo comportamento do chat (fundos, títulos públicos, crédito privado, índices ANBIMA, curvas, projeções, Selic), sempre com fonte e data. Ideal para rodar baterias de teste automatizadas (cobertura de dados, recusas, prompt injection, segurança).</p>
+        <p>Um servidor MCP que expõe a ferramenta <b>perguntar_anby</b>: você (ou o seu Claude) manda uma pergunta e recebe a resposta da ANBY Data — os mesmos dados e o mesmo comportamento do chat (fundos, títulos públicos, crédito privado, índices ANBIMA, curvas, projeções, Selic), sempre com fonte e data. Ideal para rodar baterias de teste automatizadas (cobertura de dados, recusas, prompt injection, segurança).</p>
         <p><b>Endpoint:</b> <a href="https://abda.liqi.com.br/mcp" target="_blank" rel="noreferrer">https://abda.liqi.com.br/mcp</a> · transporte <b>HTTP (Streamable)</b> · autenticação <b>Bearer token</b>.</p>
       </section>
       <section className="connect-card">
         <h3>🔑 Gerar o seu token</h3>
-        <p>Digite o e-mail com que você acessa a Anby Data. Se ele estiver na lista de acesso, o token chega nesse e-mail em instantes. Nos comandos abaixo, troque <code>SEU_TOKEN</code> pelo token recebido.</p>
+        <p>Digite o e-mail com que você acessa a ANBY Data. Se ele estiver na lista de acesso, o token chega nesse e-mail em instantes. Nos comandos abaixo, troque <code>SEU_TOKEN</code> pelo token recebido.</p>
         <form className="connect-form" onSubmit={(event) => { event.preventDefault(); if (valid) setSent(true); }}>
           <input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setSent(false); }} placeholder="seu.nome@anbima.com.br" aria-label="E-mail de acesso" />
           <button type="submit" disabled={!valid}>Enviar meu token</button>
@@ -220,7 +221,7 @@ function ConnectPanel() {
         <div className="connect-step"><i>1</i><div><p>No terminal, adicione o servidor:</p>
           <pre><code>{`claude mcp add --transport http anby-data https://abda.liqi.com.br/mcp \\
   --header "Authorization: Bearer SEU_TOKEN"`}</code></pre></div></div>
-        <div className="connect-step"><i>2</i><div><p>Abra o Claude e use naturalmente: <em>“pergunte à Anby a estimativa da Selic de hoje”</em> ou <em>“rode uma bateria de perguntas de dados na Anby”</em>. O Claude chamará a tool <code>perguntar_anby</code> sozinho.</p></div></div>
+        <div className="connect-step"><i>2</i><div><p>Abra o Claude e use naturalmente: <em>“pergunte à ANBY a estimativa da Selic de hoje”</em> ou <em>“rode uma bateria de perguntas de dados na ANBY”</em>. O Claude chamará a tool <code>perguntar_anby</code> sozinho.</p></div></div>
       </section>
       <h3 className="connect-h">Claude Desktop</h3>
       <section className="connect-card">
@@ -231,9 +232,9 @@ function ConnectPanel() {
       <h3 className="connect-h">A ferramenta</h3>
       <div className="connect-tool">
         <b>perguntar_anby(mensagem, sessionId?)</b>
-        <p>• <b>mensagem</b> — a pergunta (em qualquer idioma; a Anby responde em pt-BR).</p>
+        <p>• <b>mensagem</b> — a pergunta (em qualquer idioma; a ANBY responde em pt-BR).</p>
         <p>• <b>sessionId</b> (opcional) — para continuar uma conversa (teste multi-turno). Use um prefixo único por testador.</p>
-        <p>Retorna a resposta da Anby + <code>sessionId</code>, número de consultas à base e latência.</p>
+        <p>Retorna a resposta da ANBY + <code>sessionId</code>, número de consultas à base e latência.</p>
       </div>
       <p className="connect-warn">Cada pergunta feita pelo MCP fica registrada no nome de quem pediu o token, como no chat. As respostas têm finalidade informativa; não constituem recomendação de investimento. Dúvidas? Fale com a equipe da Liqi.</p>
     </div>
@@ -684,6 +685,15 @@ export default function App() {
   const [logoutToast, setLogoutToast] = useState(false);
   // Botão "ir para o fim" do chat: só aparece quando o usuário rola para cima.
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  // Cenários de erro e exceção (protótipo): o cenário ativo controla o que a ANBY mostra.
+  const [errorScenario, setErrorScenario] = useState<Scenario | null>(null);
+  const [scenarioThinking, setScenarioThinking] = useState(false);
+  const scenarioRun = useRef(0);
+  const [mfaPreset, setMfaPreset] = useState<MfaPreset | null>(null);
+  const [deleteFails, setDeleteFails] = useState(false);
+  const [deleteErrorId, setDeleteErrorId] = useState<number | null>(null);
+  const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false);
+  const [stateRetrying, setStateRetrying] = useState(false);
   // Campo do chat cresce com o texto (como no Claude) até um limite; depois rola.
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const [feedbackReason, setFeedbackReason] = useState("");
@@ -722,6 +732,7 @@ export default function App() {
   const [interrupted, setInterrupted] = useState(false);
 
   const newConversation = () => {
+    setErrorScenario((current) => (current && (current.kind === "chat" || current.kind === "state") ? null : current));
     setEntryScenario(null);
     setScenarioLoading(false);
     setPanel(null);
@@ -736,6 +747,7 @@ export default function App() {
   };
 
   const askQuestion = (text: string) => {
+    setErrorScenario((current) => (current && current.kind === "chat" ? null : current));
     setSentQuestion(text);
     setQuestion("");
     setTranscribed(false);
@@ -821,7 +833,7 @@ export default function App() {
     setFeedbackOpen(true);
   };
 
-  const renderActions = (index: number, text: string, answerQuestion: string) => {
+  const renderActions = (index: number, text: string, answerQuestion: string, hideTrace = false) => {
     const copiedHere = copiedIndex === index;
     const rating = ratings[index];
     return (
@@ -848,9 +860,11 @@ export default function App() {
         >
           <img src={`${A}/${rating === "down" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
         </button>
-        <button className="trace-button" onClick={() => setTraceQuestion(answerQuestion)} data-tooltip="Mostrar como cheguei aqui" aria-label="Mostrar como cheguei aqui">
-          <TraceIcon />
-        </button>
+        {!hideTrace && (
+          <button className="trace-button" onClick={() => setTraceQuestion(answerQuestion)} data-tooltip="Mostrar como cheguei aqui" aria-label="Mostrar como cheguei aqui">
+            <TraceIcon />
+          </button>
+        )}
       </div>
     );
   };
@@ -901,7 +915,14 @@ export default function App() {
     window.setTimeout(() => setSharedId(null), 1800);
   };
 
+  // Cenário 39: a exclusão falha e o aviso fica 5 segundos no lugar da data.
+  const flashDeleteError = (id: number) => {
+    setDeleteErrorId(id);
+    window.setTimeout(() => setDeleteErrorId((current) => (current === id ? null : current)), 5000);
+  };
+
   const deleteConversation = (id: number) => {
+    if (deleteFails) { setOpenMenuId(null); flashDeleteError(id); return; }
     setConversations((items) => items.filter((item) => item.id !== id));
     setOpenMenuId(null);
     if (active === id) newConversation();
@@ -1016,7 +1037,84 @@ export default function App() {
     el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
   }, [question, assistantOpen]);
 
-  // Esc fecha o modal "Como a Anby chegou a esta resposta".
+  const clearScenario = () => {
+    scenarioRun.current += 1;
+    setErrorScenario(null);
+    setMfaPreset(null);
+    setDeleteFails(false);
+    setDeleteErrorId(null);
+    setScenarioThinking(false);
+    setStateRetrying(false);
+  };
+
+  const setScenarioUrl = (id: string | null) => {
+    try {
+      const url = new URL(window.location.href);
+      if (id) url.searchParams.set("cenario", id); else url.searchParams.delete("cenario");
+      window.history.replaceState(window.history.state, "", url);
+    } catch { /* URL indisponível */ }
+  };
+
+  const runScenario = (scenario: Scenario) => {
+    clearScenario();
+    newConversation();
+    setScenarioPanelOpen(false);
+    setFeedbackOpen(false);
+    setTraceQuestion(null);
+    setMfaOpen(false);
+    setScenarioUrl(scenario.id);
+    if (scenario.kind === "page") {
+      if (assistantOpen) closeAssistant();
+      setErrorScenario(scenario);
+      return;
+    }
+    if (!assistantOpen) openAssistant();
+    if (scenario.kind === "mfa") {
+      if (scenario.pendingQuestion) { setSession(null); setPendingQuestion(scenario.pendingQuestion); }
+      setErrorScenario(scenario);
+      setMfaPreset({ ...scenario.mfa });
+      setMfaOpen(true);
+      return;
+    }
+    // Os demais cenários pressupõem uma pessoa já identificada (sessão de demonstração, não salva).
+    if (!session) setSession({ name: "Maria Silva", email: "maria@empresa.com.br", at: Date.now() });
+    setErrorScenario(scenario);
+    if (scenario.kind === "chat") {
+      const run = scenarioRun.current;
+      setScenarioThinking(true);
+      window.setTimeout(() => { if (scenarioRun.current === run) setScenarioThinking(false); }, 1400);
+    }
+    if (scenario.kind === "history") {
+      setSidebarCollapsed(false);
+      setDrawerOpen(true);
+      setDeleteFails(true);
+      if (conversations[0]) flashDeleteError(conversations[0].id);
+    }
+  };
+
+  const exitScenario = () => {
+    clearScenario();
+    setMfaOpen(false);
+    setScenarioUrl(null);
+    setScenarioPanelOpen(false);
+  };
+
+  // Botão dos estados de sistema: "Fechar a ANBY" fecha o modal; "Tentar de novo" simula a nova tentativa.
+  const runStateAction = (action: "close" | "retry") => {
+    if (action === "close") { exitScenario(); closeAssistant(); return; }
+    setStateRetrying(true);
+    const run = scenarioRun.current;
+    window.setTimeout(() => { if (scenarioRun.current === run) exitScenario(); }, 1200);
+  };
+
+  // ?cenario=NN abre o cenário direto (links para revisão).
+  useEffect(() => {
+    const scenario = findScenario(new URLSearchParams(window.location.search).get("cenario"));
+    if (scenario && features.painelCenarios) runScenario(scenario);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Esc fecha o modal "Como a ANBY chegou a esta resposta".
   useEffect(() => {
     if (!traceQuestion) return;
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setTraceQuestion(null); };
@@ -1024,7 +1122,10 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [traceQuestion]);
 
-  const hasConversation = entryScenario !== null || active !== null || sentQuestion.length > 0;
+  const chatScenario = errorScenario && errorScenario.kind === "chat" ? errorScenario : null;
+  const stateScenario = errorScenario && errorScenario.kind === "state" ? errorScenario : null;
+  const pageScenario = errorScenario && errorScenario.kind === "page" ? errorScenario : null;
+  const hasConversation = chatScenario !== null || entryScenario !== null || active !== null || sentQuestion.length > 0;
   const currentQuestion = entryScenario === "fund-composition" ? "Compare as categorias de fundos e entenda a composição do PL" : sentQuestion || conversations.find((item) => item.id === active)?.title || "";
   const currentDialogue = active ? (dialogueByConversation as Record<number, { answer: string; followups: string[][] } | undefined>)[active] || genericDialogue : genericDialogue;
 
@@ -1154,7 +1255,7 @@ export default function App() {
         ) : (
         <div
         ref={assistantRef}
-        className={sidebarCollapsed ? "assistant sidebar-collapsed" : "assistant"}
+        className={`${sidebarCollapsed ? "assistant sidebar-collapsed" : "assistant"}${stateScenario && stateScenario.hideChrome ? " no-chrome" : ""}`}
         style={size ? { width: size.w, height: size.h } : undefined}
         onClickCapture={(event) => {
           // Sem sessão válida, qualquer clique (exceto fechar e o menu) abre o modal de dados pessoais.
@@ -1238,8 +1339,8 @@ export default function App() {
                       onClick={() => { setPanel(null); setEntryScenario(null); setActive(item.id); setSentQuestion(""); setResponding(false); setInterrupted(false); setDrawerOpen(false); setOpenMenuId(null); }}
                     >
                       <span>{item.title}</span>
-                      <small>
-                        {sharedId === item.id
+                      <small className={deleteErrorId === item.id ? "delete-error" : undefined} role={deleteErrorId === item.id ? "alert" : undefined}>
+                        {deleteErrorId === item.id ? "Não consegui excluir. Tente de novo." : sharedId === item.id
                           ? "Link copiado"
                           : `${item.date} · ${item.questions} ${item.questions === 1 ? "pergunta" : "perguntas"}`}
                       </small>
@@ -1311,7 +1412,17 @@ export default function App() {
             </section>
           )}
           {tip && <div className={`side-tip ${tip.dir}`} style={{ top: tip.top, left: tip.left }} role="tooltip">{tip.text}</div>}
-          <div className={active === 4 ? "chat-home rich-chat" : "chat-home"}>
+          <div className={`${active === 4 ? "chat-home rich-chat" : "chat-home"}${stateScenario ? " has-state" : ""}`}>
+            {stateScenario && (
+              <div className="system-state" role="status">
+                <img src={`${A}/54cd1.png`} alt="" />
+                <h2>{stateScenario.stateTitle}</h2>
+                <p>{stateScenario.stateText}</p>
+                <button className="state-cta" disabled={stateRetrying} onClick={() => runStateAction(stateScenario.buttonAction)}>
+                  {stateRetrying ? <i className="mfa-spinner" aria-label="Tentando de novo" /> : stateScenario.button}
+                </button>
+              </div>
+            )}
             {!hasConversation && <div className="intro">
               <img className="anby-avatar" src={`${A}/54cd1.png`} alt="ANBY" />
               <h1>
@@ -1346,7 +1457,20 @@ export default function App() {
                   setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 80);
                 }}
               >
-                {entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse actions={renderActions(101, "O patrimônio líquido dos fundos alcançou R$ 11 trilhões em julho de 2026.", "Compare as categorias de fundos e entenda a composição do PL")} />) : active === 4 ? <RichMarketResponse actions={renderActions(100, "Os resultados vieram pelo subíndice IMA-B 5. Aqui está a evolução da variação mensal.", "Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês")} /> : (responding || interrupted) && sentQuestion ? (
+                {chatScenario ? (scenarioThinking
+                  ? <AssistantThinking stage={0} question={chatScenario.question} labels={["Consultando memoria...", "Analisando...", "Gerando a resposta..."]} />
+                  : <>
+                    <div className="user-row"><p>{chatScenario.question}</p></div>
+                    <div className="ai-row">
+                      <img src={`${A}/54cd1.png`} alt="ANBY" />
+                      <div className="ai-content scenario-answer" role={chatScenario.actions ? undefined : "status"}>
+                        {chatScenario.blocks.map((block, index) => block.divider
+                          ? <hr key={index} className="answer-divider" />
+                          : <p key={index} className={block.tone ? `scenario-${block.tone}` : undefined}>{block.text}</p>)}
+                        {chatScenario.actions && renderActions(200, chatScenario.blocks.map((block) => block.text || "").join("\n"), chatScenario.question, chatScenario.noTrace)}
+                      </div>
+                    </div>
+                  </>) : entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse actions={renderActions(101, "O patrimônio líquido dos fundos alcançou R$ 11 trilhões em julho de 2026.", "Compare as categorias de fundos e entenda a composição do PL")} />) : active === 4 ? <RichMarketResponse actions={renderActions(100, "Os resultados vieram pelo subíndice IMA-B 5. Aqui está a evolução da variação mensal.", "Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês")} /> : (responding || interrupted) && sentQuestion ? (
                   responding
                     ? <AssistantThinking stage={thinkStage} question={sentQuestion} labels={["Consultando memoria...", "Analisando...", "Gerando a resposta..."]} />
                     : <>
@@ -1526,7 +1650,7 @@ export default function App() {
           <section className="trace-modal" role="dialog" aria-modal="true" aria-labelledby="trace-title" onClick={(event) => event.stopPropagation()}>
             <header className="trace-heading">
               <div>
-                <h2 id="trace-title">Como a Anby chegou a esta resposta</h2>
+                <h2 id="trace-title">Como a ANBY chegou a esta resposta</h2>
                 <p>{traceFor(traceQuestion).length} {traceFor(traceQuestion).length === 1 ? "passo" : "passos"} · consultas feitas ao ANBIMA Feed no momento da pergunta</p>
               </div>
               <button className="feedback-close" onClick={() => setTraceQuestion(null)} aria-label="Fechar"><img src={`${A}/c9d78.svg`} alt="" /></button>
@@ -1553,13 +1677,64 @@ export default function App() {
           </section>
         </div>
       )}
+      {pageScenario && (
+        <main className="standalone-page" aria-labelledby="standalone-title">
+          <div className="standalone-card">
+            <img src={`${A}/54cd1.png`} alt="" />
+            <h1 id="standalone-title">{pageScenario.stateTitle}</h1>
+            <p>{pageScenario.stateText}</p>
+          </div>
+        </main>
+      )}
+      {features.painelCenarios && (
+        <>
+          <button
+            className={errorScenario ? "scenario-fab active" : "scenario-fab"}
+            onClick={() => setScenarioPanelOpen(!scenarioPanelOpen)}
+            aria-expanded={scenarioPanelOpen}
+            aria-controls="scenario-panel"
+          >
+            <span aria-hidden="true">!</span>
+            <b>{errorScenario ? `Cenário ${errorScenario.id}` : "Cenários de erro"}</b>
+          </button>
+          {scenarioPanelOpen && (
+            <section className="scenario-panel" id="scenario-panel" aria-label="Cenários de erro e exceção">
+              <header>
+                <div>
+                  <h2>Cenários de erro e exceção</h2>
+                  <p>Protótipo: escolha um cenário para ver como a ANBY se comporta. Link direto: <code>?cenario=NN</code>.</p>
+                </div>
+                <button className="feedback-close" onClick={() => setScenarioPanelOpen(false)} aria-label="Fechar painel"><img src={`${A}/c9d78.svg`} alt="" /></button>
+              </header>
+              {errorScenario && (
+                <div className="scenario-current">
+                  <span><b>Cenário {errorScenario.id}</b> · {errorScenario.title}<small>{errorScenario.when}</small></span>
+                  <button onClick={exitScenario}>Sair do cenário</button>
+                </div>
+              )}
+              <div className="scenario-list">
+                {SCENARIO_GROUPS.map((group) => (
+                  <div key={group} className="scenario-group">
+                    <h3>{group}</h3>
+                    {SCENARIOS.filter((scenario) => scenario.group === group).map((scenario) => (
+                      <button key={scenario.id} className={errorScenario?.id === scenario.id ? "on" : ""} aria-pressed={errorScenario?.id === scenario.id} onClick={() => runScenario(scenario)}>
+                        <i>{scenario.id}</i><span>{scenario.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
       {logoutToast && (
         <div className="anby-toast" role="status">
           <img src={`${A}/54cd1.png`} alt="" />
           <div><b>Você saiu da ANBY!</b><span>Até a próxima.</span></div>
         </div>
       )}
-      <MfaModal open={mfaOpen && assistantOpen} expired={sessionExpired} onClose={() => setMfaOpen(false)} onVerified={handleVerified} />
+      <MfaModal open={mfaOpen && assistantOpen} expired={sessionExpired} preset={mfaPreset} onClose={() => setMfaOpen(false)} onVerified={handleVerified} />
     </main>
   );
 }

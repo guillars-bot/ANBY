@@ -1,4 +1,14 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { MfaPreset } from "./scenarios";
+
+// Textos oficiais (documento de cenários de erro e exceção, 29/10/2026).
+const MSG = {
+  nameEmpty: "Informe o seu nome.",
+  nameIncomplete: "Insira o nome completo",
+  email: "Informe um e-mail válido, como voce@empresa.com.br.",
+  codeInvalid: "Código inválido ou expirado. Confira os 6 dígitos ou peça um novo código.",
+  tooManyAttempts: "Muitas tentativas com código errado para este e-mail. Aguarde 15 minutos e peça um novo código.",
+};
 
 // Regras de validação definidas no design (anotações "Inputs de dados pessoais").
 const nameOk = (v: string) => /^\S+(\s+\S+)+$/.test(v.trim());
@@ -21,9 +31,11 @@ type Props = {
   expired: boolean;
   onClose: () => void;
   onVerified: (data: { name: string; email: string }) => void;
+  /** Cenário de erro do protótipo: preenche o modal no estado do cenário. */
+  preset?: MfaPreset | null;
 };
 
-export default function MfaModal({ open, expired, onClose, onVerified }: Props) {
+export default function MfaModal({ open, expired, onClose, onVerified, preset }: Props) {
   // O estado vive no componente, que fica montado: fechar e reabrir devolve o usuário ao mesmo ponto.
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState("");
@@ -37,6 +49,25 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
   const [error, setError] = useState("");
   const [resendLeft, setResendLeft] = useState(0);
   const sentEmail = useRef("");
+  // Erros vindos do "servidor" (cenários): aparecem sob os campos ou sob o botão Continuar.
+  const [forced, setForced] = useState<{ name?: string; email?: string; form?: string }>({});
+  const [forceLock, setForceLock] = useState(false);
+
+  useEffect(() => {
+    if (!preset) return;
+    setStep(preset.step);
+    setName(preset.name ?? "");
+    setEmail(preset.email ?? "");
+    sentEmail.current = preset.email ?? "";
+    setTouched({ name: !!preset.nameError, email: !!preset.emailError });
+    setDigits(Array.from({ length: 6 }, (_, i) => (preset.code ?? "")[i] ?? ""));
+    setForced({ name: preset.nameError, email: preset.emailError, form: preset.formError });
+    setError(preset.codeError ?? "");
+    setForceLock(!!preset.locked);
+    setAttempts(preset.locked ? MAX_ATTEMPTS : 0);
+    setResendLeft(preset.locked ? LOCK_SECONDS : preset.step === 2 ? RESEND_SECONDS : 0);
+    setLoading(false);
+  }, [preset]);
 
   useEffect(() => {
     if (resendLeft <= 0) return;
@@ -53,9 +84,11 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
 
   if (!open) return null;
 
-  const locked = attempts >= MAX_ATTEMPTS;
-  const nameError = touched.name && !nameOk(name);
-  const emailError = touched.email && !emailOk(email);
+  const locked = attempts >= MAX_ATTEMPTS || forceLock;
+  const nameMessage = forced.name || (touched.name && !nameOk(name) ? (name.trim() ? MSG.nameIncomplete : MSG.nameEmpty) : "");
+  const emailMessage = forced.email || (touched.email && !emailOk(email) ? MSG.email : "");
+  const nameError = !!nameMessage;
+  const emailError = !!emailMessage;
   const canContinue = nameOk(name) && emailOk(email) && !loading;
   const canConfirm = code.length === 6 && !locked && !loading;
 
@@ -79,12 +112,12 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
       onVerified({ name: name.trim(), email: email.trim() });
       return;
     }
-    if (code === EXPIRED_CODE) { setError("Token inválido. Código expirado ou já utilizado."); return; }
+    // Código errado, vencido ou de e-mail sem acesso: a mensagem é a mesma de propósito.
+    if (code === EXPIRED_CODE) { setError(MSG.codeInvalid); return; }
     const used = attempts + 1;
     setAttempts(used);
-    if (used >= MAX_ATTEMPTS) { setError("Você atingiu o limite de tentativas. Tente novamente mais tarde."); setResendLeft(LOCK_SECONDS); return; }
-    const left = MAX_ATTEMPTS - used;
-    setError(`Código incorreto. Você tem mais ${left} ${left === 1 ? "tentativa" : "tentativas"}.`);
+    if (used >= MAX_ATTEMPTS) { setError(MSG.tooManyAttempts); setResendLeft(LOCK_SECONDS); return; }
+    setError(MSG.codeInvalid);
   };
 
   const changeDigit = (index: number, value: string) => {
@@ -102,7 +135,7 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
     if (event.key === "ArrowRight" && index < 5) inputs.current[index + 1]?.focus();
   };
 
-  const resend = () => { setDigits(Array(6).fill("")); setAttempts(0); setError(""); setResendLeft(RESEND_SECONDS); };
+  const resend = () => { setDigits(Array(6).fill("")); setAttempts(0); setForceLock(false); setError(""); setResendLeft(RESEND_SECONDS); };
 
   return (
     <div className="mfa-backdrop">
@@ -119,17 +152,18 @@ export default function MfaModal({ open, expired, onClose, onVerified }: Props) 
             <p>Para garantir sua segurança, pedimos seu nome e e-mail. Em seguida, você receberá um código para validar o acesso.</p>
             <label className="mfa-field">
               <span>Nome completo</span>
-              <input value={name} onChange={(event) => setName(event.target.value)} onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+              <input value={name} onChange={(event) => { setName(event.target.value); setForced((f) => ({ ...f, name: undefined, form: undefined })); }} onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                 placeholder="Digite seu nome completo" autoComplete="name" aria-invalid={nameError} className={nameError ? "invalid" : ""} autoFocus />
-              {nameError && <small role="alert">Insira o nome completo</small>}
+              {nameError && <small role="alert">{nameMessage}</small>}
             </label>
             <label className="mfa-field">
               <span>E-mail</span>
-              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+              <input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setForced((f) => ({ ...f, email: undefined, form: undefined })); }} onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                 placeholder="Digite seu email" autoComplete="email" aria-invalid={emailError} className={emailError ? "invalid" : ""} />
-              {emailError && <small role="alert">Insira um e-mail válido</small>}
+              {emailError && <small role="alert">{emailMessage}</small>}
             </label>
             <button className="mfa-primary" type="submit" disabled={!canContinue}>{loading ? <i className="mfa-spinner" aria-label="Validando" /> : "Continuar"}</button>
+            {forced.form && <small className="mfa-form-error" role="alert">{forced.form}</small>}
           </form>
         ) : (
           <form onSubmit={(event) => { event.preventDefault(); if (canConfirm) void confirm(); }} noValidate>

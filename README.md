@@ -34,6 +34,14 @@ Cada versão aprovada recebe uma tag no Git (`v1.0`, `v1.1`…). O ramo `main` �
 Funcionalidades ocultas numa entrega continuam no código. Para reativar, troque a chave para `true`:
 `conectarClaude`, `ditadoPorVoz`, `compartilharConversa`, `sobreAnby`.
 
+### v1.2 — Cenários de erro e exceção (em validação)
+- 39 cenários do documento "Anby: cenários de erro e exceção" (29/10/2026), com os textos oficiais, desenhados no Figma na seção "Anby – Erros e exceções (Release 1.0)". Dados em `src/scenarios.ts`.
+- **Como ver no protótipo:** botão "Cenários de erro" (canto inferior esquerdo; no celular, aba na lateral direita) ou link direto `?cenario=NN` (ex.: `?cenario=13`). "Sair do cenário" volta ao normal. O painel liga/desliga pela chave `painelCenarios` em `src/features.ts`.
+- Tipos de tela: página própria fora do portal (01), estado na área do chat (02–04; o 04 sem barra lateral), erros no acesso por código (05–12 e 25), avisos no lugar da resposta (13–24), respostas de recusa ou de dado que não veio (26–38) e exclusão que falha no histórico (39).
+- Regras visuais: aviso de sistema em cinza (#666) sem ações; aviso de resposta cortada em itálico cinza; recusas sem "mostrar como cheguei aqui"; erros de acesso em vermelho (#BD3232) sob o campo ou o botão.
+- Validações reais do acesso passaram a usar os textos oficiais ("Informe o seu nome.", "Informe um e-mail válido, como voce@empresa.com.br.", "Código inválido ou expirado…", "Muitas tentativas com código errado…").
+- "ANBY" sempre em maiúsculas nos textos do protótipo.
+
 ### v1.1 — Release 1.0 do Figma (em validação)
 - Ocultos (chaves em `false`): Conectar no Claude, ditado por voz, "Compartilhar" no submenu das conversas e "Sobre a ANBY" na barra lateral.
 - "Mostrar como cheguei aqui": novo ícone nas ações de cada resposta, abre o passo a passo com Parâmetros, Fonte e Data de referência.
@@ -46,7 +54,7 @@ Funcionalidades ocultas numa entrega continuam no código. Para reativar, troque
 - Desktop: o modal da ANBY sobrepõe a página em que o usuário estava (a página continua visível ao fundo).
 - "Sair" fecha a ANBY, devolve o usuário à página onde estava e mostra o toast sobre a página, na parte inferior.
 - Campo do chat cresce com o texto (como no Claude) até ~30% da tela; Enter envia e Shift+Enter quebra a linha.
-- Removido o link "Todas as fontes que a Anby consulta".
+- Removido o link "Todas as fontes que a ANBY consulta".
 - Mobile (Figma "Anby MOBILE - Release 1.0- AJUSTES"): home com títulos e cards no novo layout, "Mais detalhes" no card de Fundos com o painel de dados e o gancho "Explore com a ANBY"; botão "Pergunte à ANBY" fixo durante o scroll; modal sobe de baixo para cima e ocupa toda a área abaixo do menu; saudação em três linhas; "×" sem círculo; campo do chat mais alto.
 
 - "Apagar conversa" pede confirmação no próprio submenu ("Excluir esta conversa?" com Cancelar / Excluir).

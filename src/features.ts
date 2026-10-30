@@ -10,6 +10,8 @@ export const features = {
   compartilharConversa: false,
   /** Atalho "Sobre a ANBY" na barra lateral (não aparece nas telas da Release 1.0). */
   sobreAnby: false,
+  /** Painel "Cenários de erro" do protótipo (simula os 39 cenários de erro e exceção). Desligar para apresentar sem ele. */
+  painelCenarios: true,
 } as const;
 
 export type FeatureKey = keyof typeof features;

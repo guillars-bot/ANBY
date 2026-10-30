@@ -1171,3 +1171,86 @@ h1 em { color: #0095d9; font-style: normal; }
   .conversation-viewport.has-overflow::after { height: 32px; }
   .conversation-viewport.has-overflow .conversation-scroll { padding-bottom: 36px; }
 }
+
+/* ===== v1.2 · Cenários de erro e exceção ===== */
+
+/* Respostas de cenário: aviso de sistema (cinza) e aviso em itálico no fim de resposta cortada. */
+.scenario-answer { display: flex; flex-direction: column; gap: 6px; }
+.scenario-answer p { margin: 0; }
+.scenario-answer .scenario-muted { color: #666; }
+.scenario-answer .scenario-italic { color: #666; font-style: italic; }
+.answer-divider { width: 100%; margin: 6px 0; border: 0; border-top: 1px solid #d4d4d4; }
+
+/* Erro vindo do servidor no passo 1 do acesso (abaixo do botão Continuar). */
+.mfa-form-error { display: block; margin-top: 12px; color: #bd3232; font-size: 12px; line-height: 1.4; }
+
+/* Exclusão que falhou: aviso no lugar da data por 5 segundos. */
+.conversation small.delete-error { color: #bd3232; }
+
+/* Estados de sistema na área do chat (sessão expirada, indisponível, fora do ar). */
+.chat-home.has-state { justify-content: center; }
+.chat-home.has-state > .intro, .chat-home.has-state > .suggestions,
+.chat-home.has-state > .conversation-viewport, .chat-home.has-state > .composer-area { display: none; }
+.system-state { margin: auto; max-width: 400px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
+.system-state img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; box-shadow: 0 12px 20px rgba(0,0,0,.12); }
+.system-state h2 { margin: 0; color: #292929; font-family: "Lato:Regular"; font-size: 22px; font-weight: 400; line-height: 1.25; }
+.system-state p { margin: 0; color: #666; font-size: 14px; line-height: 1.5; }
+.state-cta {
+  width: 240px; height: 44px; margin-top: 4px; display: grid; place-items: center; border: 0; border-radius: 8px;
+  background: #0095d9; color: #fff; font-family: "Lato:Bold"; font-size: 14px;
+}
+.state-cta:hover { background: #0079b1; }
+.state-cta:disabled { opacity: .85; }
+/* Fora do ar: página própria, sem barra lateral. */
+.assistant.no-chrome { grid-template-columns: 1fr !important; }
+.assistant.no-chrome > .history, .assistant.no-chrome .mobile-history, .assistant.no-chrome .resize-handle { display: none; }
+.assistant.no-chrome > .chat-home { grid-column: 1 / -1; border-radius: 12px; }
+
+/* Cenário 01: página própria, fora do ANBIMA Data. */
+.standalone-page {
+  position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; padding: 24px;
+  background: linear-gradient(180deg, #badbfc 0%, #eaf7fe 30%, #f6f9f1 55%, #fceed1 100%);
+}
+.standalone-card {
+  width: min(100%, 496px); padding: 40px 48px; display: flex; flex-direction: column; align-items: center; gap: 16px;
+  border-radius: 12px; background: #fff; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,.12);
+}
+.standalone-card img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; box-shadow: 0 12px 20px rgba(0,0,0,.12); }
+.standalone-card h1 { margin: 0; color: #292929; font-family: "Lato:Regular"; font-size: 22px; font-weight: 400; line-height: 1.25; }
+.standalone-card p { margin: 0; color: #666; font-size: 14px; line-height: 1.5; }
+
+/* Painel "Cenários de erro" (só no protótipo). */
+.scenario-fab {
+  position: fixed; z-index: 95; left: 16px; bottom: 16px; height: 40px; padding: 0 14px 0 6px; display: flex; align-items: center; gap: 8px;
+  border: 1px solid #dfdfdf; border-radius: 20px; background: #fff; color: #363636; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.14);
+}
+.scenario-fab span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #fcaf17; color: #161616; font-family: "Lato:Bold"; }
+.scenario-fab b { font-family: "Lato:Bold"; font-weight: 400; }
+.scenario-fab.active { border-color: #de761c; }
+.scenario-fab.active span { background: #de761c; color: #fff; }
+.scenario-panel {
+  position: fixed; z-index: 96; left: 16px; bottom: 68px; width: min(420px, calc(100vw - 32px)); max-height: min(640px, calc(100dvh - 100px));
+  display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; background: #fff; box-shadow: 0 12px 40px rgba(0,0,0,.22);
+}
+.scenario-panel header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 12px; border-bottom: 1px solid #ededed; }
+.scenario-panel h2 { margin: 0; color: #292929; font-family: "Lato:Bold"; font-size: 15px; font-weight: 400; }
+.scenario-panel header p { margin: 4px 0 0; color: #666; font-size: 12px; line-height: 1.4; }
+.scenario-panel code { padding: 1px 4px; border-radius: 4px; background: #f0f1f2; font-size: 11px; }
+.scenario-current { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #fdf3e7; font-size: 12px; color: #363636; }
+.scenario-current span { flex: 1; }
+.scenario-current small { display: block; margin-top: 2px; color: #666; }
+.scenario-current button { flex: none; padding: 6px 10px; border: 1px solid #de761c; border-radius: 6px; background: #fff; color: #b35a10; font-size: 12px; }
+.scenario-list { overflow-y: auto; padding: 4px 8px 12px; }
+.scenario-group h3 { margin: 12px 8px 4px; color: #0079b1; font-family: "Lato:Bold"; font-size: 11px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
+.scenario-group button { width: 100%; padding: 8px; display: flex; align-items: flex-start; gap: 10px; border: 0; border-radius: 6px; background: transparent; color: #363636; text-align: left; font-size: 13px; line-height: 1.3; }
+.scenario-group button:hover { background: #edf7fb; }
+.scenario-group button.on { background: #e5f4fb; box-shadow: inset 3px 0 0 #0095d9; }
+.scenario-group button i { flex: none; width: 26px; color: #666; font-style: normal; font-family: "Lato:Bold"; font-size: 12px; }
+
+@media (max-width: 850px) {
+  .standalone-card { padding: 32px 24px; }
+  /* No celular, o atalho dos cenários fica na lateral direita para não cobrir o campo do chat. */
+  .scenario-fab { left: auto; right: 0; bottom: auto; top: 45%; padding: 0 6px; border-radius: 20px 0 0 20px; }
+  .scenario-fab b { display: none; }
+  .scenario-panel { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100dvh - 80px); }
+}
