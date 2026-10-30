@@ -347,6 +347,8 @@ h1 em { color: #0095d9; font-style: normal; }
   scrollbar-width: thin;
   scrollbar-color: rgba(102, 102, 102, .24) transparent;
 }
+/* Folga no fim da rolagem para o degradê inferior não cobrir as ações da última resposta. */
+.conversation-viewport.has-overflow .conversation-scroll { padding-bottom: 84px; }
 .conversation-scroll::-webkit-scrollbar { width: 6px; }
 .conversation-scroll::-webkit-scrollbar-track { background: transparent; }
 .conversation-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(102, 102, 102, .24); }
@@ -404,7 +406,7 @@ h1 em { color: #0095d9; font-style: normal; }
 .chat-bar-row > i b { height: 100%; display: block; background: #0095d9; }
 .chat-table-wrap { width: 100%; margin: 10px 0 14px; overflow-x: auto; }
 .chat-data-table { width: 100%; min-width: 430px; border-collapse: collapse; color: #363636; font-size: 11px; }
-.chat-data-table th { padding: 8px 10px; border: 1px solid #e2e6ea; background: #eef6fb; color: #0079b1; font-family: "Lato:Bold"; text-align: left; }
+.chat-data-table th { padding: 8px 10px; border: 1px solid #e2e6ea; background: #edf7fb; color: #0079b1; font-family: "Lato:Bold"; text-align: left; }
 .chat-data-table td { padding: 7px 10px; border: 1px solid #e2e6ea; }
 .chat-data-table tbody tr:hover { background: #f7fbfd; }
 .rich-response .chat-note { margin-top: 8px; color: #666; font-size: 11px; }
@@ -513,6 +515,7 @@ h1 em { color: #0095d9; font-style: normal; }
   .conversation-scroll { padding-top: 8px; }
   .conversation-viewport.has-overflow::before { height: 76px; }
   .conversation-viewport.has-overflow::after { height: 60px; }
+  .conversation-viewport.has-overflow .conversation-scroll { padding-bottom: 64px; }
   .history {
     position: fixed; z-index: 20; inset: 0 auto 0 0; width: 290px; border-radius: 0;
     transform: translateX(-100%); transition: transform .25s ease; box-shadow: 10px 0 30px rgba(0,0,0,.18);
@@ -911,11 +914,234 @@ h1 em { color: #0095d9; font-style: normal; }
 .panel-body { padding: 4px 40px 40px; }
 @media (min-width: 851px) { .assistant { grid-template-rows: minmax(0, 1fr); } }
 @media (max-width: 850px) {
-  .mobile-history { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; gap: 0; left: 14px; top: 14px; border-radius: 8px; }
+  .mobile-history { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; gap: 0; left: 14px; top: 14px; border-radius: 8px; background: #fff; }
   .mobile-history img, .drawer-close img { width: 24px; height: 24px; }
   .drawer-close { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; right: 18px; top: 28px; border-radius: 8px; }
   .history .sidebar-toggle { display: none; }
   .panel-view { padding: 0; }
   .panel-bar { padding: 16px 72px 12px 20px; box-shadow: 0 1px 0 #ededed; }
   .panel-body { padding: 4px 20px 32px; }
+}
+
+/* ===== Release 1.0 (v1.1 do protótipo) ===== */
+
+/* Conversas recentes: "Ver mais" mostra mais uma conversa; acima de 4, a lista rola. */
+.conversation-list.show-all .conversation-item:nth-child(n+5) { scroll-snap-align: start; }
+.conversation-list.show-all { max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(102,102,102,.24) transparent; }
+
+/* Feedback positivo: "obrigada ✓" no lugar do ícone. */
+.response-actions button.feedback-thanks-inline {
+  width: auto; padding: 0 6px; gap: 4px; display: inline-flex; align-items: center;
+  color: #1e7b34; font-family: "Lato:Medium"; font-size: 12px; background: transparent;
+}
+.response-actions button.feedback-thanks-inline:hover { background: #e8f5ec; }
+.response-actions button.trace-button { color: #0095d9; }
+.response-actions button.trace-button svg { display: block; width: 11px; height: 11px; }
+
+/* Feedback negativo: "Outros..." deixa o campo obrigatório; aviso após enviar. */
+.required-flag { color: #bd3232; }
+.feedback-success {
+  margin: 12px 0 0; padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+  border: 1px solid #8fcf9f; border-radius: 6px; background: #e8f5ec; color: #2d2f32; font-size: 12px; line-height: 16px;
+  animation: anby-fade-in .25s ease both;
+}
+.feedback-success svg { flex: none; width: 14px; height: 14px; color: #1e7b34; }
+.feedback-success b { color: #1e7b34; font-family: "Lato:Bold"; font-weight: 400; }
+
+/* "Mostrar como cheguei aqui" */
+.trace-modal {
+  width: min(100%, 860px); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 13px; background: #fff; box-shadow: 0 7px 37px 6px rgba(0,0,0,.12), 0 19px 30px 2px rgba(0,0,0,.14);
+}
+.trace-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 12px; border-bottom: 1px solid #e6e8eb; }
+.trace-heading h2 { margin: 0; color: #2d2f32; font-family: "Lato:SemiBold"; font-size: 16px; font-weight: 400; line-height: 1.3; }
+.trace-heading p { margin: 4px 0 0; color: #666; font-size: 12px; }
+.trace-body { padding: 14px 22px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.trace-step { padding: 14px 16px 6px; border: 1px solid #e6e8eb; border-radius: 10px; }
+.trace-step-head { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #eef0f2; }
+.trace-step-head h3 { flex: 1; margin: 0; color: #2d2f32; font-family: "Lato:SemiBold"; font-size: 15px; font-weight: 400; }
+.trace-index { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #0095d9; color: #fff; font-family: "Lato:Bold"; font-size: 12px; }
+.trace-status { padding: 3px 8px; border-radius: 999px; background: #e8f5ec; color: #1e7b34; font-size: 11px; white-space: nowrap; }
+.trace-step dl { margin: 0; }
+.trace-step dl div { display: grid; grid-template-columns: 180px 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eef0f2; font-size: 13px; }
+.trace-step dl div:last-child { border-bottom: 0; }
+.trace-step dt { color: #666; }
+.trace-step dd { margin: 0; color: #2d2f32; overflow-wrap: anywhere; }
+.trace-step dd.mono { font-family: "Geist Mono:Medium", ui-monospace, Menlo, monospace; font-size: 12px; }
+.trace-footer { padding: 14px 22px 18px; border-top: 1px solid #e6e8eb; background: #fff; }
+.trace-footer p { margin: 0 0 4px; color: #666; font-size: 12px; line-height: 1.4; }
+.trace-footer a { color: #0095d9; font-size: 12px; text-decoration: none; }
+.trace-footer a:hover { text-decoration: underline; }
+
+/* Scroll to bottom: invisível no fim da conversa; aparece com fade ao rolar para cima. */
+.scroll-bottom {
+  position: absolute; z-index: 4; left: 50%; bottom: 14px; width: 36px; height: 36px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: #0095d9; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  opacity: 0; transform: translate(-50%, 6px); pointer-events: none; transition: opacity .25s ease, transform .25s ease, background .15s ease;
+}
+.scroll-bottom.visible { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.scroll-bottom:hover { background: #e5f4fb; color: #0095d9; }
+
+/* Toast "Você saiu da ANBY!" */
+.anby-toast {
+  position: fixed; z-index: 60; left: 50%; bottom: 32px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; padding: 12px 20px 12px 14px; border-radius: 10px;
+  background: #0095d9; color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.18); animation: anby-toast-in .3s ease both;
+}
+.anby-toast img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+.anby-toast div { display: flex; flex-direction: column; gap: 2px; }
+.anby-toast b { font-family: "Lato:Bold"; font-weight: 400; font-size: 15px; }
+.anby-toast span { font-size: 12px; opacity: .92; }
+
+@keyframes anby-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes anby-toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .anby-toast, .feedback-success { animation: none; } .scroll-bottom { transition: none; } }
+
+@media (max-width: 850px) {
+  .trace-step dl div { grid-template-columns: 1fr; gap: 2px; }
+  .trace-heading, .trace-body, .trace-footer { padding-left: 16px; padding-right: 16px; }
+  .anby-toast { bottom: 20px; width: max-content; max-width: calc(100% - 32px); }
+}
+
+/* ===== v1.1 · Correções (30/out) ===== */
+
+/* Paletas de gráficos (ver README › Cores dos gráficos)
+   - Gancho contextual da home (ex.: "Explore com a ANBY" no painel de fundos): usa as MESMAS cores da home
+     (.fif, .structured, .etf, .offshore), para o gráfico do chat continuar o que o usuário viu.
+   - Gráfico novo gerado no chat: série única em #0095D9; com categorias, seguir a ordem abaixo (até 6; 8ª = "Outros").
+     Cabeçalho de tabela: texto #0079B1 sobre #EDF7FB. Card do indicador: #F8F9FA, sem contorno nem sombra. */
+:root {
+  --chat-series-single: #0095d9;
+  --chat-series-1: #275dd2; --chat-series-2: #de761c; --chat-series-3: #034694; --chat-series-4: #80c342;
+  --chat-series-5: #d6519d; --chat-series-6: #028a9b; --chat-series-7: #fcaf17; --chat-series-8: #666a7a;
+  --chat-table-head-text: #0079b1; --chat-table-head-bg: #edf7fb; --chat-indicator-card: #f8f9fa;
+}
+
+/* Desktop: o modal da ANBY sobrepõe a página em que o usuário estava (a página continua visível ao fundo). */
+@media (min-width: 851px) {
+  .assistant-overlay .workspace { background: transparent; }
+  .assistant { box-shadow: 0 12px 40px rgba(0, 0, 0, .18), 0 2px 8px rgba(0, 0, 0, .08); }
+}
+
+/* Campo do chat: cresce com o texto até ~30% da tela (a altura é ajustada no App.tsx). */
+.composer-main { height: auto; min-height: 52px; }
+.composer-main textarea { height: auto; min-height: 36px; padding: 0; }
+.rich-chat .composer-main { height: auto; min-height: 38px; }
+
+/* Saudação: versão desktop e versão mobile (três linhas). */
+.greeting-mobile { display: none; }
+
+@media (max-width: 850px) {
+  .greeting-desktop { display: none; }
+  .greeting-mobile { display: inline; }
+
+  /* Modal sobe de baixo para cima e ocupa toda a largura e a altura abaixo do menu do ANBIMA Data. */
+  .assistant-overlay { top: 64px; bottom: 0; height: calc(100dvh - 64px); }
+  .assistant-overlay .workspace { height: 100%; padding: 0; background: #fff; }
+  .assistant-overlay .assistant { width: 100%; height: 100%; max-height: none; animation: anby-sheet-up .32s cubic-bezier(.22, 1, .36, 1) both; }
+  .chat-home { height: 100%; }
+  .history { box-shadow: none; }
+  .history.open { box-shadow: 10px 0 30px rgba(0, 0, 0, .18); }
+
+  /* Fechar: só o "×" azul, sem círculo (Figma mobile). */
+  .assistant .close { right: 12px; top: 14px; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; font-size: 26px; line-height: 1; }
+
+  /* Saudação mobile */
+  .chat-home h1 { font-size: 25px; line-height: 1.05; }
+
+  /* Campo do chat um pouco mais alto (anotação do Figma). */
+  .composer-main { min-height: 62px; }
+  .composer-main textarea { min-height: 54px; font-size: 14px; line-height: 18px; }
+
+  /* Gráfico de gancho no chat cabe na largura da tela. */
+  .rich-response { min-width: 0; overflow-wrap: anywhere; }
+  .chat-composition-plot { gap: 3px; }
+  .chat-composition-plot small { font-size: 9px; line-height: 1.1; white-space: normal; text-align: center; }
+
+  /* Home mobile */
+  .portal-hero { padding: 0 10px 8px; }
+  .portal-hero h1 { margin: 0; padding: 32px 14px; color: #161616; font-family: "Lato:Regular"; font-size: 20px; line-height: 1.25; text-align: left; }
+  .portal-hero h1 strong { color: #363636; }
+  .portal-hero h1 .desktop-break { display: none; }
+  .portal-metrics { grid-template-columns: 1fr; gap: 8px; }
+  .metric-card, .anby-highlight { height: auto; min-height: 235px; border-radius: 8px; }
+  .metric-card { position: relative; padding: 24px; justify-content: flex-start; gap: 16px; border: 1px solid #ededed; }
+  .metric-card > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+  .metric-card h2 { color: #363636; font-family: "Lato:SemiBold"; font-size: 16px; line-height: 24px; }
+  .metric-card small { margin: 0; }
+  .metric-card strong { font-size: 36px; }
+  .metric-card p { margin-top: 8px; font-size: 14px; }
+  .portal-data { display: none; }
+}
+
+@keyframes anby-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .assistant-overlay .assistant { animation: none !important; } }
+
+/* "Mais detalhes" (só mobile) */
+.m-more, .m-details { display: none; }
+@media (max-width: 850px) {
+  .metric-card.has-details { padding-bottom: 8px; }
+  .m-more {
+    align-self: flex-end; display: inline-flex; align-items: center; gap: 4px; height: 44px; margin-top: -4px; padding: 4px 8px;
+    border: 0; background: transparent; color: #0095d9; font-family: "Lato:Bold"; font-size: 14px;
+  }
+  .m-more svg { transition: transform .2s ease; }
+  .metric-card.open .m-more svg { transform: scaleY(-1); }
+  .m-details { display: flex; flex-direction: column; gap: 24px; margin: 0 -24px; padding-bottom: 16px; }
+  .m-legend { margin: 0; padding: 0; list-style: none; }
+  .m-legend li { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 24px; border-bottom: 1px solid #ededed; color: #484a4d; font-size: 14px; }
+  .m-legend li:first-child { border-top: 1px solid #ededed; }
+  .m-legend i { width: 10px; height: 10px; flex: none; }
+  .m-legend span { flex: 1; }
+  .m-legend b { font-family: "Lato:Regular"; font-weight: 400; }
+  .m-block { padding: 0 24px; display: flex; flex-direction: column; gap: 12px; }
+  .m-chips { display: flex; gap: 8px; }
+  .m-chips button { height: 28px; padding: 0 12px; border: 1px solid #b0b0b0; border-radius: 8px; background: transparent; color: #363636; font-size: 12px; }
+  .m-chips button.on { border-color: #0095d9; background: #0095d9; color: #fefefe; }
+  .m-fixed { margin: 0; display: flex; align-items: center; gap: 8px; color: #484a4d; font-size: 12px; }
+  .m-fixed b { font-family: "Lato:Bold"; font-size: 14px; font-weight: 400; }
+  .m-dot { width: 10px; height: 10px; border-radius: 50%; background: #0b9cda; }
+  .m-stack-chart, .m-line-chart { position: relative; display: grid; grid-template-columns: 34px 1fr; }
+  .m-y { display: flex; flex-direction: column; justify-content: space-between; color: #363636; font-size: 12px; }
+  .m-stack-chart, .m-line-chart { padding-top: 30px; }
+  .m-unit { position: absolute; left: 0; top: 0; color: #363636; font-size: 12px; }
+  .m-y span { height: 0; display: flex; align-items: center; }
+  .m-stack-chart .m-y { height: 240px; }
+  .m-plot { height: 270px; display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid #d4d4d4;
+    background: repeating-linear-gradient(to top, #ededed 0 1px, transparent 1px 48px); background-position: 0 -30px; }
+  .m-col { width: 46px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .m-col.current { background: #e5f4fb; }
+  .m-bar { width: 32px; display: flex; flex-direction: column; gap: 2px; }
+  .m-bar i { display: block; width: 100%; }
+  .m-col small { height: 30px; padding-top: 4px; color: #363636; font-size: 12px; line-height: 1.1; text-align: center; }
+  .m-anby-cta {
+    margin: 0 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+    border: 0; border-radius: 16px; background: rgba(40, 62, 115, .05); text-align: left;
+  }
+  .m-anby-cta span { color: #283e73; font-size: 14px; line-height: 18.7px; }
+  .m-anby-cta b { display: flex; align-items: center; gap: 8px; color: #153d8a; font-family: "Lato:Bold"; font-size: 14px; font-weight: 400; }
+  .m-anby-cta b img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+  .m-anby-cta b img.m-anby-logo { width: 51px; height: 12px; border-radius: 0; object-fit: contain; }
+  .m-card-head { display: flex; align-items: center; justify-content: space-between; }
+  .m-card-head h3 { margin: 0; color: #363636; font-family: "Lato:SemiBold"; font-size: 16px; font-weight: 400; }
+  .m-card-head small { color: #666; font-size: 12px; }
+  .m-number { color: #153d8a; font-family: "Lato:ExtraBold"; font-size: 36px; line-height: 1; }
+  .m-caption { margin: -4px 0 0; color: #666; font-size: 14px; }
+  .m-filter { margin: 4px 0 -8px; color: #363636; font-family: "Lato:Bold"; font-size: 12px; }
+  .m-line-chart { height: 192px; }
+  .m-line-chart .m-y { height: 120px; padding: 26px 0 20px; }
+  .m-line-chart svg { width: 100%; height: 120px; align-self: start; border-bottom: 1px solid #d4d4d4; }
+  .m-line-point { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border: 2px solid #fff; border-radius: 50%; background: #0095d9; }
+  .m-months { grid-column: 2; display: flex; justify-content: space-between; color: #363636; font-size: 12px; text-align: center; }
+  .m-related { padding: 0 24px; display: flex; flex-direction: column; gap: 8px; }
+  .m-related h3 { margin: 0 0 8px; color: #363636; font-family: "Lato:Regular"; font-size: 15px; font-weight: 400; line-height: 20px; }
+  .m-related article { padding: 17px 25px; display: flex; flex-direction: column; gap: 6px; border: 1px solid #ededed; border-radius: 8px; background: #fefefe; }
+  .m-related img { width: 16px; height: 16px; }
+  .m-related span { color: #666; font-size: 14px; }
+  .m-related a { color: #0095d9; font-size: 16px; text-decoration: none; }
+
+  /* CTA da ANBY acompanha o usuário durante o scroll, com o balão sempre visível no mobile. */
+  .anby-launcher { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); gap: 8px; }
+  .anby-launcher span { opacity: 1; transform: none; pointer-events: auto; padding: 9px 11px; border-radius: 8px 8px 2px 8px; font-size: 15px; }
+  .anby-launcher img { width: 48px; height: 48px; }
 }

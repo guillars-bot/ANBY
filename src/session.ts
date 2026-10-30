@@ -6,6 +6,15 @@ export type Session = { name: string; email: string; at: number };
 
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? "";
 
+// Iniciais do avatar: primeira letra do primeiro e do último nome ("Maria da Silva" → "MS").
+export const initials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const first = parts[0][0];
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase();
+};
+
 export function loadSession(): { session: Session | null; expired: boolean } {
   try {
     const raw = window.localStorage.getItem(KEY);

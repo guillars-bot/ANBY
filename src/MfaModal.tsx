@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent }
 
 // Regras de validação definidas no design (anotações "Inputs de dados pessoais").
 const nameOk = (v: string) => /^\S+(\s+\S+)+$/.test(v.trim());
-const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.com(\.[a-z]{2})?$/i.test(v.trim());
+// Aceita qualquer domínio com extensão válida (.com, .com.br, .org.br, .gov.br, .net...).
+const emailOk = (v: string) => /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[a-z]{2,}$/i.test(v.trim());
 
 const MAX_ATTEMPTS = 5;
 const RESEND_SECONDS = 60;
