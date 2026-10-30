@@ -1161,3 +1161,13 @@ h1 em { color: #0095d9; font-style: normal; }
 /* Cursor do campo do chat começa no topo (o campo não fica mais centralizado/alinhado embaixo). */
 .composer-main textarea { align-self: flex-start; min-height: 52px; }
 @media (max-width: 850px) { .composer-main textarea { min-height: 62px; } }
+
+/* Degradê de rolagem do chat mais baixo (desktop e mobile). */
+.conversation-viewport.has-overflow::before { height: 48px; }
+.conversation-viewport.has-overflow::after { height: 40px; }
+.conversation-viewport.has-overflow .conversation-scroll { padding-bottom: 44px; }
+@media (max-width: 850px) {
+  .conversation-viewport.has-overflow::before { height: 36px; }
+  .conversation-viewport.has-overflow::after { height: 32px; }
+  .conversation-viewport.has-overflow .conversation-scroll { padding-bottom: 36px; }
+}

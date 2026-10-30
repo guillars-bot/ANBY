@@ -52,6 +52,7 @@ Funcionalidades ocultas numa entrega continuam no código. Para reativar, troque
 - "Apagar conversa" pede confirmação no próprio submenu ("Excluir esta conversa?" com Cancelar / Excluir).
 - "Termos de uso" abre na área do chat, com "Voltar ao chat" fixo no topo.
 - Cursor do campo do chat começa no topo do campo.
+- Degradê de rolagem do chat mais baixo (desktop 48/40 px; mobile 36/32 px).
 
 ### Cores dos gráficos
 - **Gráfico que nasce de um gancho da home** (ex.: "Explore com a ANBY" no painel de fundos): usa as mesmas cores do gráfico da home (FIF #80C342, Estruturados #DE761C, ETF #275DD2, Off-shore #FCAF17).
