@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import MfaModal from "./MfaModal";
-import { clearSession, firstName, loadSession, saveSession, type Session } from "./session";
+import { features } from "./features";
+import { SCENARIOS, SCENARIO_GROUPS, findScenario, type MfaPreset, type Scenario } from "./scenarios";
+import { clearSession, firstName, initials, loadSession, saveSession, type Session } from "./session";
 
 const A = "/assets";
 
@@ -78,6 +80,31 @@ const imaBRows = [
   ["ago/2026 (31/08)", "+1,28%", "11.616,57", 1.28],
   ["set/2026 (30/09)", "+2,01%", "11.849,51", 2.01],
 ] as const;
+
+// "Mostrar como cheguei aqui": consultas que a ANBY fez para montar cada resposta (dados simulados).
+type TraceStep = { title: string; params: string; source: string; date: string };
+const TRACE_BY_QUESTION: Record<string, TraceStep[]> = {
+  "Qual a taxa indicativa da NTN-B 2035?": [
+    { title: "Consultando títulos públicos", params: "tipo_titulo: NTN-B · ano_vencimento: 2035", source: "ANBIMA Feed", date: "26/10/2026" },
+  ],
+  "Qual o PL e o número de cotistas de um fundo da Kinea?": [
+    { title: "Consultando fundos de investimento", params: "gestor: Kinea · campos: patrimonio_liquido, numero_cotistas", source: "Boletim de fundos de investimento", date: "30/09/2026" },
+  ],
+  "Como está a curva de crédito AAA de debêntures?": [
+    { title: "Consultando curvas de crédito", params: "ativo: debêntures · rating: AAA", source: "ANBIMA Feed", date: "26/10/2026" },
+  ],
+  "Mostra o resultado do IMA-B com a composição": [
+    { title: "Consultando índices IMA", params: "indice: IMA-B · campos: composicao, variacao_mensal", source: "ANBIMA Feed", date: "19/10/2026" },
+  ],
+  "Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês": [
+    { title: "Consultando índices IMA", params: "indice: IMA-B 5 · periodo: out/2025–set/2026", source: "ANBIMA Feed", date: "19/10/2026" },
+  ],
+  "Compare as categorias de fundos e entenda a composição do PL": [
+    { title: "Consultando fundos de investimento", params: "campo: patrimonio_liquido · categorias: FIF, Estruturados, ETF, Off-shore", source: "Boletim de fundos de investimento", date: "31/07/2026" },
+  ],
+};
+const traceFor = (question: string): TraceStep[] =>
+  TRACE_BY_QUESTION[question] ?? [{ title: "Consultando publicações", params: `tema: ${question}`, source: "ANBIMA Feed", date: "26/10/2026" }];
 
 type MenuDef = { key: string; label: string; sections: string[]; counter?: string; items: { label: string; badge?: string }[]; promo: { tag?: string; text: string } };
 const API_PROMO = "Consuma dados de mercado via API de forma automatizada.";
@@ -172,16 +199,16 @@ function ConnectPanel() {
 }`;
   return (
     <div className="connect">
-      <h2>Conectar no Anby Data via MCP</h2>
-      <p className="connect-lead">Conecte a Anby Data ao seu Claude (Claude Code ou Claude Desktop) e faça perguntas — e baterias de teste — direto pelo assistente, via MCP (Model Context Protocol).</p>
+      <h2>Conectar no ANBY Data via MCP</h2>
+      <p className="connect-lead">Conecte a ANBY Data ao seu Claude (Claude Code ou Claude Desktop) e faça perguntas — e baterias de teste — direto pelo assistente, via MCP (Model Context Protocol).</p>
       <section className="connect-card">
         <h3>O que é</h3>
-        <p>Um servidor MCP que expõe a ferramenta <b>perguntar_anby</b>: você (ou o seu Claude) manda uma pergunta e recebe a resposta da Anby Data — os mesmos dados e o mesmo comportamento do chat (fundos, títulos públicos, crédito privado, índices ANBIMA, curvas, projeções, Selic), sempre com fonte e data. Ideal para rodar baterias de teste automatizadas (cobertura de dados, recusas, prompt injection, segurança).</p>
+        <p>Um servidor MCP que expõe a ferramenta <b>perguntar_anby</b>: você (ou o seu Claude) manda uma pergunta e recebe a resposta da ANBY Data — os mesmos dados e o mesmo comportamento do chat (fundos, títulos públicos, crédito privado, índices ANBIMA, curvas, projeções, Selic), sempre com fonte e data. Ideal para rodar baterias de teste automatizadas (cobertura de dados, recusas, prompt injection, segurança).</p>
         <p><b>Endpoint:</b> <a href="https://abda.liqi.com.br/mcp" target="_blank" rel="noreferrer">https://abda.liqi.com.br/mcp</a> · transporte <b>HTTP (Streamable)</b> · autenticação <b>Bearer token</b>.</p>
       </section>
       <section className="connect-card">
         <h3>🔑 Gerar o seu token</h3>
-        <p>Digite o e-mail com que você acessa a Anby Data. Se ele estiver na lista de acesso, o token chega nesse e-mail em instantes. Nos comandos abaixo, troque <code>SEU_TOKEN</code> pelo token recebido.</p>
+        <p>Digite o e-mail com que você acessa a ANBY Data. Se ele estiver na lista de acesso, o token chega nesse e-mail em instantes. Nos comandos abaixo, troque <code>SEU_TOKEN</code> pelo token recebido.</p>
         <form className="connect-form" onSubmit={(event) => { event.preventDefault(); if (valid) setSent(true); }}>
           <input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setSent(false); }} placeholder="seu.nome@anbima.com.br" aria-label="E-mail de acesso" />
           <button type="submit" disabled={!valid}>Enviar meu token</button>
@@ -194,7 +221,7 @@ function ConnectPanel() {
         <div className="connect-step"><i>1</i><div><p>No terminal, adicione o servidor:</p>
           <pre><code>{`claude mcp add --transport http anby-data https://abda.liqi.com.br/mcp \\
   --header "Authorization: Bearer SEU_TOKEN"`}</code></pre></div></div>
-        <div className="connect-step"><i>2</i><div><p>Abra o Claude e use naturalmente: <em>“pergunte à Anby a estimativa da Selic de hoje”</em> ou <em>“rode uma bateria de perguntas de dados na Anby”</em>. O Claude chamará a tool <code>perguntar_anby</code> sozinho.</p></div></div>
+        <div className="connect-step"><i>2</i><div><p>Abra o Claude e use naturalmente: <em>“pergunte à ANBY a estimativa da Selic de hoje”</em> ou <em>“rode uma bateria de perguntas de dados na ANBY”</em>. O Claude chamará a tool <code>perguntar_anby</code> sozinho.</p></div></div>
       </section>
       <h3 className="connect-h">Claude Desktop</h3>
       <section className="connect-card">
@@ -205,9 +232,9 @@ function ConnectPanel() {
       <h3 className="connect-h">A ferramenta</h3>
       <div className="connect-tool">
         <b>perguntar_anby(mensagem, sessionId?)</b>
-        <p>• <b>mensagem</b> — a pergunta (em qualquer idioma; a Anby responde em pt-BR).</p>
+        <p>• <b>mensagem</b> — a pergunta (em qualquer idioma; a ANBY responde em pt-BR).</p>
         <p>• <b>sessionId</b> (opcional) — para continuar uma conversa (teste multi-turno). Use um prefixo único por testador.</p>
-        <p>Retorna a resposta da Anby + <code>sessionId</code>, número de consultas à base e latência.</p>
+        <p>Retorna a resposta da ANBY + <code>sessionId</code>, número de consultas à base e latência.</p>
       </div>
       <p className="connect-warn">Cada pergunta feita pelo MCP fica registrada no nome de quem pediu o token, como no chat. As respostas têm finalidade informativa; não constituem recomendação de investimento. Dúvidas? Fale com a equipe da Liqi.</p>
     </div>
@@ -247,6 +274,23 @@ function SendIcon() {
   );
 }
 
+function TraceIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="2.5" cy="2.5" r="1.5" /><circle cx="9.5" cy="9.5" r="1.5" />
+      <path d="M4 2.5h3.5a2 2 0 0 1 0 4h-3a2 2 0 0 0 0 4H8" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m2.5 6.5 2.3 2.3L9.5 3.5" /></svg>;
+}
+
+function ArrowDownIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 2v10M3 8l4 4 4-4" /></svg>;
+}
+
 function ChatIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0095d9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -264,7 +308,7 @@ function InfoIcon() {
   );
 }
 
-function RichMarketResponse() {
+function RichMarketResponse({ actions }: { actions: ReactNode }) {
   return (
     <>
       <div className="user-row"><p>Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês</p></div>
@@ -295,18 +339,14 @@ function RichMarketResponse() {
             <li>Esses são os números do subíndice <strong>IMA-B 5</strong> (NTN-B com vencimento em até 5 anos). Se você quiser o <strong>IMA-B cheio</strong> ou o <strong>IMA-B 5+</strong> mês a mês, consigo montar a mesma série.</li>
             <li>Quer que eu estenda o período ou troque a visualização para o número-índice acumulado?</li>
           </ul>
-          <div className="response-actions">
-            <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-            <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-            <button data-tooltip="Resposta insatisfatória" aria-label="Resposta insatisfatória"><img src={`${A}/4e98f.svg`} alt="" /></button>
-          </div>
+          {actions}
         </div>
       </div>
     </>
   );
 }
 
-function FundCompositionResponse() {
+function FundCompositionResponse({ actions }: { actions: ReactNode }) {
   const bars = [
     [70,11,8,11,"Ago 25"],[42,27,20,11,"Set 25"],[58,10,17,15,"Out 25"],[46,25,12,17,"Nov 25"],
     [33,31,27,9,"Dez 25"],[45,13,24,18,"Jan 26"],[57,17,9,17,"Fev 26"],[40,10,22,28,"Mar 26"],
@@ -326,11 +366,7 @@ function FundCompositionResponse() {
             </div>
           </section>
           <p>Os <strong>FIF</strong> representam a maior parcela do patrimônio, enquanto fundos estruturados ganharam participação em alguns períodos. ETF e Off-shore mantêm participação menor, mas complementam a diversificação da indústria.</p>
-          <div className="response-actions">
-            <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-            <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-            <button data-tooltip="Resposta insatisfatória" aria-label="Resposta insatisfatória"><img src={`${A}/4e98f.svg`} alt="" /></button>
-          </div>
+          {actions}
         </div>
       </div>
     </>
@@ -365,17 +401,109 @@ function MenuIcon({ name }: { name: "rename" | "share" | "delete" | "more" }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6" /></svg>;
 }
 
+// Home mobile (Figma "Anby MOBILE - Release 1.0 - AJUSTES"): o painel de dados de fundos fica dentro do card,
+// aberto por "Mais detalhes". As cores seguem as da home (gráficos de gancho da ANBY usam a mesma paleta).
+const MOBILE_FUND_LEGEND = [
+  ["fif", "FIF", "79,6%"],
+  ["structured", "Estruturados", "2,4%"],
+  ["etf", "ETF", "17,1%"],
+  ["offshore", "Off-shore", "0,9%"],
+] as const;
+// Altura de cada segmento (px, escala de 240px = 50 milhões): FIF, Estruturados, ETF, Off-shore.
+const MOBILE_FUND_BARS = [
+  ["Fev", "2026", 128, 8, 6, 9],
+  ["Mar", "", 89, 39, 30, 9],
+  ["Abr", "", 80, 43, 60, 9],
+  ["Mai", "", 101, 39, 47, 16],
+  ["Jun", "", 101, 39, 47, 16],
+  ["Jul", "", 82, 39, 34, 16],
+] as const;
+
+function PeriodChips({ active = "6M" }: { active?: string }) {
+  return (
+    <div className="m-chips" role="group" aria-label="Período">
+      {["6M", "12M", "24M", "36M"].map((label) => <button key={label} className={label === active ? "on" : ""} aria-pressed={label === active}>{label}</button>)}
+    </div>
+  );
+}
+
+function MobileFundDetails({ onOpenAssistant }: { onOpenAssistant: (scenario?: "fund-composition") => void }) {
+  return (
+    <div className="m-details" id="m-fund-details">
+      <ul className="m-legend">
+        {MOBILE_FUND_LEGEND.map(([key, label, share]) => <li key={key}><i className={key} /><span>{label}</span><b>{share}</b></li>)}
+      </ul>
+      <div className="m-block">
+        <PeriodChips />
+        <p className="m-fixed"><span>Jul 2026</span><b>11 TRI</b><span>total do mês</span></p>
+        <div className="m-stack-chart" aria-label="Composição do patrimônio líquido nos últimos 6 meses">
+          <span className="m-unit">milhões</span>
+          <div className="m-y"><span>50</span><span>40</span><span>30</span><span>20</span><span>10</span><span>0</span></div>
+          <div className="m-plot">
+            {MOBILE_FUND_BARS.map(([month, year, fif, structured, etf, offshore], index) => (
+              <div key={month} className={index === MOBILE_FUND_BARS.length - 1 ? "m-col current" : "m-col"}>
+                <div className="m-bar">
+                  <i className="offshore" style={{ height: offshore }} /><i className="etf" style={{ height: etf }} />
+                  <i className="structured" style={{ height: structured }} /><i className="fif" style={{ height: fif }} />
+                </div>
+                <small>{month}{year && <><br />{year}</>}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Gancho contextual: abre a ANBY com o contexto deste gráfico (Figma: frame chat 1.2). */}
+      <button className="m-anby-cta" onClick={() => onOpenAssistant("fund-composition")}>
+        <span>Compare as categorias de fundos e entenda a composição do PL</span>
+        <b><img src={`${A}/54cd1.png`} alt="" />Explore com a <img className="m-anby-logo" src={`${A}/anby-logo.png`} alt="ANBY" /></b>
+      </button>
+      <div className="m-block">
+        <div className="m-card-head"><h3>Fundos de investimento</h3><small>Julho 2026</small></div>
+        <strong className="m-number">34.095</strong>
+        <p className="m-caption">Quantidade de fundos (estoque)</p>
+        <p className="m-filter">Filtrar por:</p>
+        <PeriodChips />
+        <p className="m-fixed"><span>Mai 2026</span><i className="m-dot" /><b>33.626</b></p>
+        <div className="m-line-chart">
+          <span className="m-unit">mil</span>
+          <div className="m-y"><span>34</span><span>33</span><span>32</span></div>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none" aria-label="Evolução da quantidade de fundos">
+            <defs><linearGradient id="mAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0095d9" stopOpacity=".3" /><stop offset="1" stopColor="#0095d9" stopOpacity=".08" /></linearGradient></defs>
+            <polygon points="0,62 60,60 120,48 180,30 240,40 300,26 300,100 0,100" fill="url(#mAreaFill)" />
+            <polyline points="0,62 60,60 120,48 180,30 240,40 300,26" fill="none" stroke="#0095d9" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            <line x1="180" y1="0" x2="180" y2="100" stroke="#b2b5bf" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+          </svg>
+          <i className="m-line-point" style={{ left: "calc(34px + (100% - 34px) * .6)", top: "58px" }} />
+          <div className="m-months"><span>Fev<br />2026</span><span>Mar</span><span>Abr</span><span>Mai</span><span>Jun</span><span>Jul</span></div>
+        </div>
+      </div>
+      <div className="m-related">
+        <h3>Mais dados e publicações de fundos de investimento</h3>
+        {["Boletim de fundos de investimento", "Dashboard radar 175", "Dashboard de FIDCs"].map((title) => (
+          <article key={title}><img src={`${A}/c95e1.svg`} alt="" /><span>{title}</span><a href="#acessar" onClick={(event) => event.preventDefault()}>Acessar</a></article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PortalHome({ onOpenAssistant }: { onOpenAssistant: (scenario?: "fund-composition") => void }) {
+  const [fundDetailsOpen, setFundDetailsOpen] = useState(false);
   return (
     <div className="portal-home">
       <section className="portal-hero">
         <div className="portal-container">
-          <h1>Os dados que orientam o mercado financeiro<br /><strong>de forma gratuita e com a transparência ANBIMA</strong></h1>
+          <h1>Os dados que orientam o mercado financeiro<br className="desktop-break" /> <strong>de forma gratuita e com a transparência ANBIMA</strong></h1>
           <div className="portal-metrics">
-            <article className="metric-card">
+            <article className={fundDetailsOpen ? "metric-card has-details open" : "metric-card has-details"}>
               <div><h2>Fundos de Investimento</h2><small>Julho 2026</small></div>
               <div><strong>11 TRI</strong><p>Patrimônio líquido</p></div>
               <div className="metric-bar funds"><i /><i /><i /><i /></div>
+              <button className="m-more" onClick={() => setFundDetailsOpen(!fundDetailsOpen)} aria-expanded={fundDetailsOpen} aria-controls="m-fund-details">
+                {fundDetailsOpen ? "Menos detalhes" : "Mais detalhes"}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+              </button>
+              {fundDetailsOpen && <MobileFundDetails onOpenAssistant={onOpenAssistant} />}
             </article>
             <article className="metric-card">
               <div><h2>Títulos Privados</h2><small>Julho 2026</small></div>
@@ -542,17 +670,40 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [sentQuestion, setSentQuestion] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [liked, setLiked] = useState(false);
+  // Ações por resposta (índice 0 = primeira resposta, 1+ = respostas seguintes da conversa).
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [ratings, setRatings] = useState<Record<number, "up" | "down">>({});
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState<"first" | "second" | null>(null);
-  const [feedbackTarget, setFeedbackTarget] = useState<"first" | "second">("first");
+  const [feedbackTarget, setFeedbackTarget] = useState(0);
+  // Pergunta clicada antes do login: é enviada automaticamente após a validação.
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  // Feedback negativo enviado: mostra o aviso de agradecimento abaixo do botão antes de fechar o modal.
+  const [feedbackThanks, setFeedbackThanks] = useState(false);
+  // "Mostrar como cheguei aqui": pergunta da resposta cujo caminho está aberto.
+  const [traceQuestion, setTraceQuestion] = useState<string | null>(null);
+  // Toast de saída ("Você saiu da ANBY!").
+  const [logoutToast, setLogoutToast] = useState(false);
+  // Botão "ir para o fim" do chat: só aparece quando o usuário rola para cima.
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  // Cenários de erro e exceção (protótipo): o cenário ativo controla o que a ANBY mostra.
+  const [errorScenario, setErrorScenario] = useState<Scenario | null>(null);
+  const [scenarioThinking, setScenarioThinking] = useState(false);
+  const scenarioRun = useRef(0);
+  const [mfaPreset, setMfaPreset] = useState<MfaPreset | null>(null);
+  const [deleteFails, setDeleteFails] = useState(false);
+  const [deleteErrorId, setDeleteErrorId] = useState<number | null>(null);
+  const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false);
+  const [stateRetrying, setStateRetrying] = useState(false);
+  // Campo do chat cresce com o texto (como no Claude) até um limite; depois rola.
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [feedbackReason, setFeedbackReason] = useState("");
   const [feedbackDetails, setFeedbackDetails] = useState("");
   const [termsOpen, setTermsOpen] = useState(false);
   const [conversationOverflows, setConversationOverflows] = useState(false);
   const conversationRef = useRef<HTMLDivElement>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  // Confirmação de exclusão dentro do próprio submenu da conversa.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [sharedId, setSharedId] = useState<number | null>(null);
@@ -568,7 +719,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(initialSession.session);
   const [sessionExpired, setSessionExpired] = useState(initialSession.expired);
   const [mfaOpen, setMfaOpen] = useState(false);
-  const [panel, setPanel] = useState<null | "about" | "connect">(null);
+  const [panel, setPanel] = useState<null | "about" | "connect" | "terms">(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -581,6 +732,7 @@ export default function App() {
   const [interrupted, setInterrupted] = useState(false);
 
   const newConversation = () => {
+    setErrorScenario((current) => (current && (current.kind === "chat" || current.kind === "state") ? null : current));
     setEntryScenario(null);
     setScenarioLoading(false);
     setPanel(null);
@@ -589,13 +741,13 @@ export default function App() {
     setSentQuestion("");
     setResponding(false);
     setInterrupted(false);
-    setCopied(false);
-    setLiked(false);
-    setFeedbackSent(null);
+    setCopiedIndex(null);
+    setRatings({});
     setDrawerOpen(false);
   };
 
   const askQuestion = (text: string) => {
+    setErrorScenario((current) => (current && current.kind === "chat" ? null : current));
     setSentQuestion(text);
     setQuestion("");
     setTranscribed(false);
@@ -662,26 +814,82 @@ export default function App() {
 
   const recordingTime = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
-  const copyAnswer = async () => {
-    await navigator.clipboard?.writeText("A ANBIMA acompanha a evolução da indústria e reúne dados consolidados para apoiar sua análise.");
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+  const copyAnswer = async (index: number, text: string) => {
+    try { await navigator.clipboard?.writeText(text); } catch { /* clipboard indisponível */ }
+    setCopiedIndex(index);
+    window.setTimeout(() => setCopiedIndex((current) => (current === index ? null : current)), 1800);
+  };
+
+  const toggleLike = (index: number) => {
+    setRatings((current) => {
+      const next = { ...current };
+      if (next[index] === "up") delete next[index]; else next[index] = "up";
+      return next;
+    });
+  };
+
+  const openFeedback = (index: number) => {
+    setFeedbackTarget(index);
+    setFeedbackOpen(true);
+  };
+
+  const renderActions = (index: number, text: string, answerQuestion: string, hideTrace = false) => {
+    const copiedHere = copiedIndex === index;
+    const rating = ratings[index];
+    return (
+      <div className="response-actions" aria-label="Ações da resposta">
+        <button onClick={() => copyAnswer(index, text)} data-tooltip={copiedHere ? "Copiado!" : "Copiar"} aria-label={copiedHere ? "Resposta copiada" : "Copiar resposta"}>
+          <img src={`${A}/${copiedHere ? "bddb2.svg" : "6030c.svg"}`} alt="" />
+        </button>
+        {rating === "up" ? (
+          // Feedback positivo: o ícone dá lugar a "obrigada ✓" (Figma: input chat - positive feedback). Clicar desfaz.
+          <button className="feedback-thanks-inline" onClick={() => toggleLike(index)} aria-label="Resposta marcada como satisfatória. Desfazer" aria-pressed="true">
+            <span>obrigada</span><CheckIcon />
+          </button>
+        ) : (
+          <button onClick={() => toggleLike(index)} data-tooltip="Resposta satisfatória" aria-label="Marcar resposta como satisfatória" aria-pressed="false">
+            <img src={`${A}/4a340.svg`} alt="" />
+          </button>
+        )}
+        <button
+          className={rating === "down" ? "selected" : ""}
+          onClick={() => openFeedback(index)}
+          data-tooltip="Resposta insatisfatória"
+          aria-label="Marcar resposta como insatisfatória"
+          aria-pressed={rating === "down"}
+        >
+          <img src={`${A}/${rating === "down" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
+        </button>
+        {!hideTrace && (
+          <button className="trace-button" onClick={() => setTraceQuestion(answerQuestion)} data-tooltip="Mostrar como cheguei aqui" aria-label="Mostrar como cheguei aqui">
+            <TraceIcon />
+          </button>
+        )}
+      </div>
+    );
   };
 
   const closeFeedback = () => {
     setFeedbackOpen(false);
-    setFeedbackSent(null);
+    setFeedbackThanks(false);
     setFeedbackReason("");
     setFeedbackDetails("");
   };
 
+  // "Outros..." torna o campo de informações adicionais obrigatório.
+  const detailsRequired = feedbackReason === "Outros...";
+  const feedbackReady = Boolean(feedbackReason) && (!detailsRequired || feedbackDetails.trim().length > 0);
+
   const submitFeedback = () => {
-    if (!feedbackReason) return;
-    setFeedbackOpen(false);
-    setFeedbackSent(feedbackTarget);
-    setLiked(false);
-    setFeedbackReason("");
-    setFeedbackDetails("");
+    if (!feedbackReady || feedbackThanks) return;
+    setRatings((current) => ({ ...current, [feedbackTarget]: "down" }));
+    setFeedbackThanks(true);
+    window.setTimeout(() => {
+      setFeedbackOpen(false);
+      setFeedbackThanks(false);
+      setFeedbackReason("");
+      setFeedbackDetails("");
+    }, 2500);
   };
 
   const startRename = (id: number, title: string) => {
@@ -707,7 +915,14 @@ export default function App() {
     window.setTimeout(() => setSharedId(null), 1800);
   };
 
+  // Cenário 39: a exclusão falha e o aviso fica 5 segundos no lugar da data.
+  const flashDeleteError = (id: number) => {
+    setDeleteErrorId(id);
+    window.setTimeout(() => setDeleteErrorId((current) => (current === id ? null : current)), 5000);
+  };
+
   const deleteConversation = (id: number) => {
+    if (deleteFails) { setOpenMenuId(null); flashDeleteError(id); return; }
     setConversations((items) => items.filter((item) => item.id !== id));
     setOpenMenuId(null);
     if (active === id) newConversation();
@@ -719,6 +934,7 @@ export default function App() {
     setTermsOpen(false);
     setDrawerOpen(false);
     setFeedbackOpen(false);
+    setTraceQuestion(null);
     setMfaOpen(false);
     setVoice("idle");
     setTranscribed(false);
@@ -740,7 +956,7 @@ export default function App() {
     window.history.pushState({ anby: true }, "");
   };
 
-  const openPanel = (kind: "about" | "connect") => {
+  const openPanel = (kind: "about" | "connect" | "terms") => {
     setPanel(kind);
     setDrawerOpen(false);
     setOpenMenuId(null);
@@ -776,11 +992,19 @@ export default function App() {
     setSession({ ...data, at: Date.now() });
     setSessionExpired(false);
     setMfaOpen(false);
+    if (pendingQuestion) {
+      askQuestion(pendingQuestion);
+      setPendingQuestion(null);
+    }
   };
 
+  // Sair encerra a sessão, fecha a ANBY (o usuário volta à página onde estava) e mostra o toast sobre a página.
   const logout = () => {
     clearSession();
     setSession(null);
+    closeAssistant();
+    setLogoutToast(true);
+    window.setTimeout(() => setLogoutToast(false), 4000);
   };
 
   // O botão voltar do navegador devolve o usuário à tela de onde abriu o assistente.
@@ -804,7 +1028,104 @@ export default function App() {
     return () => timers.forEach(window.clearTimeout);
   }, [responding]);
 
-  const hasConversation = entryScenario !== null || active !== null || sentQuestion.length > 0;
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const max = Math.round(window.innerHeight * 0.3);
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  }, [question, assistantOpen]);
+
+  const clearScenario = () => {
+    scenarioRun.current += 1;
+    setErrorScenario(null);
+    setMfaPreset(null);
+    setDeleteFails(false);
+    setDeleteErrorId(null);
+    setScenarioThinking(false);
+    setStateRetrying(false);
+  };
+
+  const setScenarioUrl = (id: string | null) => {
+    try {
+      const url = new URL(window.location.href);
+      if (id) url.searchParams.set("cenario", id); else url.searchParams.delete("cenario");
+      window.history.replaceState(window.history.state, "", url);
+    } catch { /* URL indisponível */ }
+  };
+
+  const runScenario = (scenario: Scenario) => {
+    clearScenario();
+    newConversation();
+    setScenarioPanelOpen(false);
+    setFeedbackOpen(false);
+    setTraceQuestion(null);
+    setMfaOpen(false);
+    setScenarioUrl(scenario.id);
+    if (scenario.kind === "page") {
+      if (assistantOpen) closeAssistant();
+      setErrorScenario(scenario);
+      return;
+    }
+    if (!assistantOpen) openAssistant();
+    if (scenario.kind === "mfa") {
+      if (scenario.pendingQuestion) { setSession(null); setPendingQuestion(scenario.pendingQuestion); }
+      setErrorScenario(scenario);
+      setMfaPreset({ ...scenario.mfa });
+      setMfaOpen(true);
+      return;
+    }
+    // Os demais cenários pressupõem uma pessoa já identificada (sessão de demonstração, não salva).
+    if (!session) setSession({ name: "Maria Silva", email: "maria@empresa.com.br", at: Date.now() });
+    setErrorScenario(scenario);
+    if (scenario.kind === "chat") {
+      const run = scenarioRun.current;
+      setScenarioThinking(true);
+      window.setTimeout(() => { if (scenarioRun.current === run) setScenarioThinking(false); }, 1400);
+    }
+    if (scenario.kind === "history") {
+      setSidebarCollapsed(false);
+      setDrawerOpen(true);
+      setDeleteFails(true);
+      if (conversations[0]) flashDeleteError(conversations[0].id);
+    }
+  };
+
+  const exitScenario = () => {
+    clearScenario();
+    setMfaOpen(false);
+    setScenarioUrl(null);
+    setScenarioPanelOpen(false);
+  };
+
+  // Botão dos estados de sistema: "Fechar a ANBY" fecha o modal; "Tentar de novo" simula a nova tentativa.
+  const runStateAction = (action: "close" | "retry") => {
+    if (action === "close") { exitScenario(); closeAssistant(); return; }
+    setStateRetrying(true);
+    const run = scenarioRun.current;
+    window.setTimeout(() => { if (scenarioRun.current === run) exitScenario(); }, 1200);
+  };
+
+  // ?cenario=NN abre o cenário direto (links para revisão).
+  useEffect(() => {
+    const scenario = findScenario(new URLSearchParams(window.location.search).get("cenario"));
+    if (scenario && features.painelCenarios) runScenario(scenario);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Esc fecha o modal "Como a ANBY chegou a esta resposta".
+  useEffect(() => {
+    if (!traceQuestion) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setTraceQuestion(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [traceQuestion]);
+
+  const chatScenario = errorScenario && errorScenario.kind === "chat" ? errorScenario : null;
+  const stateScenario = errorScenario && errorScenario.kind === "state" ? errorScenario : null;
+  const pageScenario = errorScenario && errorScenario.kind === "page" ? errorScenario : null;
+  const hasConversation = chatScenario !== null || entryScenario !== null || active !== null || sentQuestion.length > 0;
   const currentQuestion = entryScenario === "fund-composition" ? "Compare as categorias de fundos e entenda a composição do PL" : sentQuestion || conversations.find((item) => item.id === active)?.title || "";
   const currentDialogue = active ? (dialogueByConversation as Record<number, { answer: string; followups: string[][] } | undefined>)[active] || genericDialogue : genericDialogue;
 
@@ -815,6 +1136,7 @@ export default function App() {
       return;
     }
 
+    setShowScrollBottom(false);
     const checkOverflow = () => setConversationOverflows(element.scrollHeight > element.clientHeight + 1);
     checkOverflow();
     const observer = new ResizeObserver(checkOverflow);
@@ -933,7 +1255,7 @@ export default function App() {
         ) : (
         <div
         ref={assistantRef}
-        className={sidebarCollapsed ? "assistant sidebar-collapsed" : "assistant"}
+        className={`${sidebarCollapsed ? "assistant sidebar-collapsed" : "assistant"}${stateScenario && stateScenario.hideChrome ? " no-chrome" : ""}`}
         style={size ? { width: size.w, height: size.h } : undefined}
         onClickCapture={(event) => {
           // Sem sessão válida, qualquer clique (exceto fechar e o menu) abre o modal de dados pessoais.
@@ -944,6 +1266,8 @@ export default function App() {
           if (window.matchMedia("(max-width: 850px)").matches && target.closest(".history")) return;
           event.preventDefault();
           event.stopPropagation();
+          const suggestion = target.closest<HTMLElement>("[data-question]");
+          setPendingQuestion(suggestion?.dataset.question ?? null);
           setMfaOpen(true);
         }}
       >
@@ -985,13 +1309,13 @@ export default function App() {
             <button className="history-label" onClick={() => setRecentExpanded(!recentExpanded)} aria-expanded={recentExpanded}>
               Conversas recentes <img className={recentExpanded ? "" : "rotated"} src={`${A}/cc7eb.svg`} alt="" />
             </button>
-            {recentExpanded && <div className="conversation-list">
-              {conversations.slice(0, showAllConversations ? 4 : 3).map((item) => (
+            {recentExpanded && <div className={showAllConversations ? "conversation-list show-all" : "conversation-list"}>
+              {(showAllConversations ? conversations : conversations.slice(0, 3)).map((item) => (
                 <div
                   key={item.id}
                   className={`conversation-item${active === item.id ? " selected" : ""}${openMenuId === item.id ? " menu-open" : ""}`}
                   onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget)) setOpenMenuId(null);
+                    if (!event.currentTarget.contains(event.relatedTarget)) { setOpenMenuId(null); setConfirmDeleteId(null); }
                   }}
                 >
                   {renamingId === item.id ? (
@@ -1015,8 +1339,8 @@ export default function App() {
                       onClick={() => { setPanel(null); setEntryScenario(null); setActive(item.id); setSentQuestion(""); setResponding(false); setInterrupted(false); setDrawerOpen(false); setOpenMenuId(null); }}
                     >
                       <span>{item.title}</span>
-                      <small>
-                        {sharedId === item.id
+                      <small className={deleteErrorId === item.id ? "delete-error" : undefined} role={deleteErrorId === item.id ? "alert" : undefined}>
+                        {deleteErrorId === item.id ? "Não consegui excluir. Tente de novo." : sharedId === item.id
                           ? "Link copiado"
                           : `${item.date} · ${item.questions} ${item.questions === 1 ? "pergunta" : "perguntas"}`}
                       </small>
@@ -1025,44 +1349,53 @@ export default function App() {
                   {renamingId !== item.id && (
                   <button
                     className="conversation-menu-trigger"
-                    onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                    onClick={() => { setConfirmDeleteId(null); setOpenMenuId(openMenuId === item.id ? null : item.id); }}
                     aria-label={`Editar conversa ${item.title}`}
                     aria-expanded={openMenuId === item.id}
                   >
                     <MenuIcon name="more" />
                   </button>
                   )}
-                  {openMenuId === item.id && (
+                  {openMenuId === item.id && confirmDeleteId === item.id && (
+                    <div className="conversation-menu delete-confirm" role="alertdialog" aria-labelledby={`del-title-${item.id}`} aria-describedby={`del-desc-${item.id}`}>
+                      <p className="delete-confirm-title" id={`del-title-${item.id}`}>Excluir esta conversa?</p>
+                      <p className="delete-confirm-text" id={`del-desc-${item.id}`}>Ela sai da sua lista e não dá para desfazer.</p>
+                      <button autoFocus onClick={() => { setConfirmDeleteId(null); setOpenMenuId(null); }}><span>Cancelar</span></button>
+                      <div className="menu-divider" />
+                      <button className="delete-action" onClick={() => { setConfirmDeleteId(null); deleteConversation(item.id); }}><MenuIcon name="delete" /><span>Excluir</span></button>
+                    </div>
+                  )}
+                  {openMenuId === item.id && confirmDeleteId !== item.id && (
                     <div className="conversation-menu" role="menu">
                       <button onClick={() => startRename(item.id, item.title)} role="menuitem"><MenuIcon name="rename" /><span>Renomear</span></button>
-                      <button onClick={() => shareConversation(item.id)} role="menuitem"><MenuIcon name="share" /><span>Compartilhar</span></button>
+                      {features.compartilharConversa && <button onClick={() => shareConversation(item.id)} role="menuitem"><MenuIcon name="share" /><span>Compartilhar</span></button>}
                       <div className="menu-divider" />
-                      <button className="delete-action" onClick={() => deleteConversation(item.id)} role="menuitem"><MenuIcon name="delete" /><span>Apagar conversa</span></button>
+                      <button className="delete-action" onClick={() => setConfirmDeleteId(item.id)} role="menuitem"><MenuIcon name="delete" /><span>Apagar conversa</span></button>
                     </div>
                   )}
                 </div>
               ))}
               {conversations.length > 3 && <button className="show-all-conversations" onClick={() => setShowAllConversations(!showAllConversations)}>{showAllConversations ? "Ver menos" : "Ver mais"}</button>}
             </div>}
-            <div className="sidebar-group">
+            {features.conectarClaude && <div className="sidebar-group">
               <p>Soluções</p>
               <button className="sidebar-link" onClick={() => openPanel("connect")}><img src={`${A}/b1265.svg`} alt="" /><span>Conectar no Claude</span><b>Novo</b></button>
-            </div>
-            <div className="sidebar-group">
+            </div>}
+            {features.sobreAnby && <div className="sidebar-group">
               <p>Saiba mais</p>
               <button className="sidebar-link" onClick={() => openPanel("about")}><InfoIcon /><span>Sobre a ANBY</span></button>
-            </div>
+            </div>}
             </div>
             <div className="collapsed-nav">
               <button className="rail-button" aria-label="Minhas conversas" onClick={() => { hideTip(); setSidebarCollapsed(false); }} {...tipProps("Minhas conversas", "r", sidebarCollapsed)}><ChatIcon /></button>
-              <button className="rail-button" aria-label="Conectar no Claude" onClick={() => openPanel("connect")} {...tipProps("Conectar no Claude", "r", sidebarCollapsed)}><img src={`${A}/b1265.svg`} alt="" /></button>
-              <button className="rail-button" aria-label="Sobre a ANBY" onClick={() => openPanel("about")} {...tipProps("Sobre a ANBY", "r", sidebarCollapsed)}><InfoIcon /></button>
+              {features.conectarClaude && <button className="rail-button" aria-label="Conectar no Claude" onClick={() => openPanel("connect")} {...tipProps("Conectar no Claude", "r", sidebarCollapsed)}><img src={`${A}/b1265.svg`} alt="" /></button>}
+              {features.sobreAnby && <button className="rail-button" aria-label="Sobre a ANBY" onClick={() => openPanel("about")} {...tipProps("Sobre a ANBY", "r", sidebarCollapsed)}><InfoIcon /></button>}
             </div>
             </div>
             <div className="history-footer">
-              <button className="avatar-small account-button" aria-label="Minha conta" onClick={() => { if (sidebarCollapsed) { hideTip(); setSidebarCollapsed(false); } }} {...tipProps("Minha conta", "r", sidebarCollapsed)}>GC</button>
+              <button className="avatar-small account-button" aria-label="Minha conta" onClick={() => { if (sidebarCollapsed) { hideTip(); setSidebarCollapsed(false); } }} {...tipProps("Minha conta", "r", sidebarCollapsed)}>{session ? initials(session.name) : "?"}</button>
               <span className="footer-text">
-                <b>Guilherme Cademartori</b>
+                <b>{session ? session.name.trim() : "Visitante"}</b>
                 <small>Minha conta <span aria-hidden="true">·</span> <a href="#sair" onClick={(event) => { event.preventDefault(); logout(); }}>Sair</a></small>
               </span>
             </div>
@@ -1073,16 +1406,30 @@ export default function App() {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5 5 12M12 9l-3 3" /></svg>
           </button>
           {panel && (
-            <section className="panel-view" aria-label={panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
+            <section className="panel-view" aria-label={panel === "terms" ? "Termos de uso" : panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
               <div className="panel-bar"><button className="panel-back" onClick={() => setPanel(null)}>← Voltar ao chat</button></div>
-              <div className="panel-body">{panel === "about" ? <AboutPanel /> : <ConnectPanel />}</div>
+              <div className="panel-body">{panel === "connect" ? <ConnectPanel /> : <AboutPanel />}</div>
             </section>
           )}
           {tip && <div className={`side-tip ${tip.dir}`} style={{ top: tip.top, left: tip.left }} role="tooltip">{tip.text}</div>}
-          <div className={active === 4 ? "chat-home rich-chat" : "chat-home"}>
+          <div className={`${active === 4 ? "chat-home rich-chat" : "chat-home"}${stateScenario ? " has-state" : ""}`}>
+            {stateScenario && (
+              <div className="system-state" role="status">
+                <img src={`${A}/54cd1.png`} alt="" />
+                <h2>{stateScenario.stateTitle}</h2>
+                <p>{stateScenario.stateText}</p>
+                <button className="state-cta" disabled={stateRetrying} onClick={() => runStateAction(stateScenario.buttonAction)}>
+                  {stateRetrying ? <i className="mfa-spinner" aria-label="Tentando de novo" /> : stateScenario.button}
+                </button>
+              </div>
+            )}
             {!hasConversation && <div className="intro">
               <img className="anby-avatar" src={`${A}/54cd1.png`} alt="ANBY" />
-              <h1>{session ? `Olá, ${firstName(session.name)}, em que posso te ajudar` : "Olá, em que posso te ajudar"}<br />sobre <em>os dados do mercado?</em></h1>
+              <h1>
+                <span className="greeting-desktop">{session ? `Olá, ${firstName(session.name)}, em que posso te ajudar` : "Olá, em que posso te ajudar"}<br />sobre <em>os dados do mercado?</em></span>
+                {/* Mobile (Figma Release 1.0 - ajustes): saudação em três linhas. */}
+                <span className="greeting-mobile">{session ? `Olá, ${firstName(session.name)}!` : "Olá!"}<br />Vamos falar sobre os<br /><em>dados do mercado?</em></span>
+              </h1>
             </div>}
 
             {!hasConversation && (
@@ -1090,7 +1437,7 @@ export default function App() {
                 <p>Faça uma pergunta ou tente um exemplo:</p>
                 <div className="question-list">
                   {suggestions.slice(0, 4).map((text) => (
-                    <button key={text} onClick={() => askQuestion(text)}>
+                    <button key={text} data-question={text} onClick={() => askQuestion(text)}>
                       <span>{text}</span>
                       <img src={`${A}/70745.svg`} alt="" />
                     </button>
@@ -1101,8 +1448,29 @@ export default function App() {
 
             {hasConversation && (
               <div className="conversation-viewport has-overflow">
-              <div className="conversation-scroll" aria-live="polite" ref={conversationRef}>
-                {entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse />) : active === 4 ? <RichMarketResponse /> : (responding || interrupted) && sentQuestion ? (
+              <div
+                className="conversation-scroll"
+                aria-live="polite"
+                ref={conversationRef}
+                onScroll={(event) => {
+                  const el = event.currentTarget;
+                  setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 80);
+                }}
+              >
+                {chatScenario ? (scenarioThinking
+                  ? <AssistantThinking stage={0} question={chatScenario.question} labels={["Consultando memoria...", "Analisando...", "Gerando a resposta..."]} />
+                  : <>
+                    <div className="user-row"><p>{chatScenario.question}</p></div>
+                    <div className="ai-row">
+                      <img src={`${A}/54cd1.png`} alt="ANBY" />
+                      <div className="ai-content scenario-answer" role={chatScenario.actions ? undefined : "status"}>
+                        {chatScenario.blocks.map((block, index) => block.divider
+                          ? <hr key={index} className="answer-divider" />
+                          : <p key={index} className={block.tone ? `scenario-${block.tone}` : undefined}>{block.text}</p>)}
+                        {chatScenario.actions && renderActions(200, chatScenario.blocks.map((block) => block.text || "").join("\n"), chatScenario.question, chatScenario.noTrace)}
+                      </div>
+                    </div>
+                  </>) : entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse actions={renderActions(101, "O patrimônio líquido dos fundos alcançou R$ 11 trilhões em julho de 2026.", "Compare as categorias de fundos e entenda a composição do PL")} />) : active === 4 ? <RichMarketResponse actions={renderActions(100, "Os resultados vieram pelo subíndice IMA-B 5. Aqui está a evolução da variação mensal.", "Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês")} /> : (responding || interrupted) && sentQuestion ? (
                   responding
                     ? <AssistantThinking stage={thinkStage} question={sentQuestion} labels={["Consultando memoria...", "Analisando...", "Gerando a resposta..."]} />
                     : <>
@@ -1117,27 +1485,7 @@ export default function App() {
                   <img src={`${A}/54cd1.png`} alt="ANBY" />
                   <div className="ai-content">
                     <p>{currentDialogue.answer}</p>
-                    <div className="response-actions" aria-label="Ações da resposta">
-                      <button onClick={copyAnswer} data-tooltip={copied ? "Copiado!" : "Copiar"} aria-label={copied ? "Resposta copiada" : "Copiar resposta"}>
-                        <img src={`${A}/${copied ? "bddb2.svg" : "6030c.svg"}`} alt="" />
-                      </button>
-                      <button
-                        className={liked ? "selected" : ""}
-                        onClick={() => { setLiked(!liked); setFeedbackSent(null); }}
-                        data-tooltip="Resposta satisfatória"
-                        aria-label="Marcar resposta como satisfatória"
-                      >
-                        <img src={`${A}/${liked ? "757a8.svg" : "4a340.svg"}`} alt="" />
-                      </button>
-                      <button
-                        className={feedbackSent === "first" ? "selected" : ""}
-                        onClick={() => { setFeedbackTarget("first"); setFeedbackOpen(true); }}
-                        data-tooltip="Resposta insatisfatória"
-                        aria-label="Marcar resposta como insatisfatória"
-                      >
-                        <img src={`${A}/${feedbackSent === "first" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
-                      </button>
-                    </div>
+                    {renderActions(0, currentDialogue.answer, currentQuestion)}
                   </div>
                 </div>
                 <div className="user-row second-message">
@@ -1147,21 +1495,10 @@ export default function App() {
                   <img src={`${A}/54cd1.png`} alt="ANBY" />
                   <div className="ai-content">
                     <p>{currentDialogue.followups[0][1]}</p>
-                    <div className="response-actions">
-                      <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-                      <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-                      <button
-                        className={feedbackSent === "second" ? "selected" : ""}
-                        onClick={() => { setFeedbackTarget("second"); setFeedbackOpen(true); }}
-                        data-tooltip="Resposta insatisfatória"
-                        aria-label="Resposta insatisfatória"
-                      >
-                        <img src={`${A}/${feedbackSent === "second" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
-                      </button>
-                    </div>
+                    {renderActions(1, currentDialogue.followups[0][1], currentDialogue.followups[0][0])}
                   </div>
                 </div>
-                {currentDialogue.followups.slice(1).map(([followupQuestion, followupAnswer]: string[]) => (
+                {currentDialogue.followups.slice(1).map(([followupQuestion, followupAnswer]: string[], followupIndex: number) => (
                   <div className="dialogue-pair" key={followupQuestion}>
                     <div className="user-row">
                       <p>{followupQuestion}</p>
@@ -1170,17 +1507,22 @@ export default function App() {
                       <img src={`${A}/54cd1.png`} alt="ANBY" />
                       <div className="ai-content">
                         <p>{followupAnswer}</p>
-                        <div className="response-actions">
-                          <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-                          <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-                          <button data-tooltip="Resposta insatisfatória" aria-label="Resposta insatisfatória"><img src={`${A}/4e98f.svg`} alt="" /></button>
-                        </div>
+                        {renderActions(followupIndex + 2, followupAnswer, followupQuestion)}
                       </div>
                     </div>
                   </div>
                 ))}
                 </>}
               </div>
+              <button
+                className={showScrollBottom ? "scroll-bottom visible" : "scroll-bottom"}
+                onClick={() => conversationRef.current?.scrollTo({ top: conversationRef.current.scrollHeight, behavior: "smooth" })}
+                aria-label="Ir para o fim da conversa"
+                tabIndex={showScrollBottom ? 0 : -1}
+                aria-hidden={!showScrollBottom}
+              >
+                <ArrowDownIcon />
+              </button>
               </div>
             )}
 
@@ -1188,14 +1530,23 @@ export default function App() {
               <div className={voice === "recording" ? "composer recording" : "composer"}>
                 <div className="composer-main">
                   <textarea
+                    ref={composerRef}
+                    rows={2}
                     value={question}
                     onChange={(event) => { setQuestion(event.target.value); setTranscribed(false); }}
+                    onKeyDown={(event) => {
+                      // Enter envia; Shift+Enter quebra a linha (como no Claude).
+                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        sendQuestion();
+                      }
+                    }}
                     placeholder="Pergunte sobre fundos, renda fixa e mercado de capitais"
                     aria-label="Mensagem para a ANBY"
                     disabled={voice === "recording" || responding}
                   />
                   <div className="composer-actions">
-                    <button
+                    {features.ditadoPorVoz && <button
                       className={voice === "recording" ? "mic-button is-recording" : "mic-button"}
                       onClick={toggleRecording}
                       disabled={responding}
@@ -1203,7 +1554,7 @@ export default function App() {
                       {...tipProps(voice === "recording" ? "Parar e transcrever" : "Ditar a pergunta", "l")}
                     >
                       {voice === "recording" ? <StopIcon /> : <MicIcon />}
-                    </button>
+                    </button>}
                     {responding ? (
                       <button className="send-button pause-button" onClick={pauseResponse} aria-label="Parar resposta" {...tipProps("Parar resposta", "l")}><PauseIcon /></button>
                     ) : (
@@ -1234,7 +1585,7 @@ export default function App() {
                 )}
               </div>
               {transcribed && voice === "idle" && <p className="transcribed-status">Transcrito - Revise e envie</p>}
-              <p>A ANBY é uma ferramenta de IA da Anbima com finalidade exclusivamente informativa, não constituindo aconselhamento ou recomendação profissional, sendo recomendada a verificação das informações em fontes oficiais para tomada de decisão. Consulte os <button className="terms-link" onClick={() => setTermsOpen(true)}>Termos de uso</button> da IA antes de utilizar.</p>
+              <p>A ANBY é uma ferramenta de IA da Anbima com finalidade exclusivamente informativa, não constituindo aconselhamento ou recomendação profissional, sendo recomendada a verificação das informações em fontes oficiais para tomada de decisão. Consulte os <button className="terms-link" onClick={() => openPanel("terms")}>Termos de uso</button> da IA antes de utilizar.</p>
             </div>
           </div>
         </div>
@@ -1264,12 +1615,16 @@ export default function App() {
                 <img src={`${A}/6d1f0.svg`} alt="" />
               </div>
 
-              <label className="field-label details-label" htmlFor="feedback-details">Informações adicionais (opcional)</label>
+              <label className="field-label details-label" htmlFor="feedback-details">
+                Informações adicionais {detailsRequired ? <span className="required-flag">(campo obrigatório)</span> : "(opcional)"}
+              </label>
               <textarea
                 id="feedback-details"
                 value={feedbackDetails}
                 onChange={(event) => setFeedbackDetails(event.target.value)}
                 maxLength={1000}
+                required={detailsRequired}
+                aria-required={detailsRequired}
                 placeholder="Adicione mais detalhes"
               />
               <span className={feedbackDetails.length === 1000 ? "character-count limit" : "character-count"}>
@@ -1280,12 +1635,106 @@ export default function App() {
               <img src={`${A}/02411.svg`} alt="" />
               <p>Enviar feedback incluirá toda a conversa para aprimorar a ANBY.</p>
             </div>
-            <button className="feedback-submit" disabled={!feedbackReason} onClick={submitFeedback}>Enviar</button>
+            <button className="feedback-submit" disabled={!feedbackReady || feedbackThanks} onClick={submitFeedback}>Enviar</button>
+            {feedbackThanks && (
+              <p className="feedback-success" role="status">
+                <InfoIcon /><span><b>Obrigado pelo feedback!</b> Isso nos ajuda a melhorar a assistente.</span>
+              </p>
+            )}
           </section>
         </div>
       )}
       </div>}
-      <MfaModal open={mfaOpen && assistantOpen} expired={sessionExpired} onClose={() => setMfaOpen(false)} onVerified={handleVerified} />
+      {traceQuestion && (
+        <div className="feedback-backdrop" role="presentation" onClick={() => setTraceQuestion(null)}>
+          <section className="trace-modal" role="dialog" aria-modal="true" aria-labelledby="trace-title" onClick={(event) => event.stopPropagation()}>
+            <header className="trace-heading">
+              <div>
+                <h2 id="trace-title">Como a ANBY chegou a esta resposta</h2>
+                <p>{traceFor(traceQuestion).length} {traceFor(traceQuestion).length === 1 ? "passo" : "passos"} · consultas feitas ao ANBIMA Feed no momento da pergunta</p>
+              </div>
+              <button className="feedback-close" onClick={() => setTraceQuestion(null)} aria-label="Fechar"><img src={`${A}/c9d78.svg`} alt="" /></button>
+            </header>
+            <div className="trace-body">
+              {traceFor(traceQuestion).map((step, index) => (
+                <article className="trace-step" key={step.title + index}>
+                  <div className="trace-step-head">
+                    <span className="trace-index">{index + 1}</span>
+                    <h3>{step.title}</h3>
+                    <span className="trace-status">Consulta concluída</span>
+                  </div>
+                  <dl>
+                    <div><dt>Parâmetros</dt><dd className="mono">{step.params}</dd></div>
+                    <div><dt>Fonte</dt><dd className="mono">{step.source}</dd></div>
+                    <div><dt>Data de referência</dt><dd>{step.date}</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+            <footer className="trace-footer">
+              <p>Registro técnico para validação: os números da resposta vêm destas consultas. Dado pessoal e conteúdo exclusivo de associados não aparecem.</p>
+            </footer>
+          </section>
+        </div>
+      )}
+      {pageScenario && (
+        <main className="standalone-page" aria-labelledby="standalone-title">
+          <div className="standalone-card">
+            <img src={`${A}/54cd1.png`} alt="" />
+            <h1 id="standalone-title">{pageScenario.stateTitle}</h1>
+            <p>{pageScenario.stateText}</p>
+          </div>
+        </main>
+      )}
+      {features.painelCenarios && (
+        <>
+          <button
+            className={errorScenario ? "scenario-fab active" : "scenario-fab"}
+            onClick={() => setScenarioPanelOpen(!scenarioPanelOpen)}
+            aria-expanded={scenarioPanelOpen}
+            aria-controls="scenario-panel"
+          >
+            <span aria-hidden="true">!</span>
+            <b>{errorScenario ? `Cenário ${errorScenario.id}` : "Cenários de erro"}</b>
+          </button>
+          {scenarioPanelOpen && (
+            <section className="scenario-panel" id="scenario-panel" aria-label="Cenários de erro e exceção">
+              <header>
+                <div>
+                  <h2>Cenários de erro e exceção</h2>
+                  <p>Protótipo: escolha um cenário para ver como a ANBY se comporta. Link direto: <code>?cenario=NN</code>.</p>
+                </div>
+                <button className="feedback-close" onClick={() => setScenarioPanelOpen(false)} aria-label="Fechar painel"><img src={`${A}/c9d78.svg`} alt="" /></button>
+              </header>
+              {errorScenario && (
+                <div className="scenario-current">
+                  <span><b>Cenário {errorScenario.id}</b> · {errorScenario.title}<small>{errorScenario.when}</small></span>
+                  <button onClick={exitScenario}>Sair do cenário</button>
+                </div>
+              )}
+              <div className="scenario-list">
+                {SCENARIO_GROUPS.map((group) => (
+                  <div key={group} className="scenario-group">
+                    <h3>{group}</h3>
+                    {SCENARIOS.filter((scenario) => scenario.group === group).map((scenario) => (
+                      <button key={scenario.id} className={errorScenario?.id === scenario.id ? "on" : ""} aria-pressed={errorScenario?.id === scenario.id} onClick={() => runScenario(scenario)}>
+                        <i>{scenario.id}</i><span>{scenario.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+      {logoutToast && (
+        <div className="anby-toast" role="status">
+          <img src={`${A}/54cd1.png`} alt="" />
+          <div><b>Você saiu da ANBY!</b><span>Até a próxima.</span></div>
+        </div>
+      )}
+      <MfaModal open={mfaOpen && assistantOpen} expired={sessionExpired} preset={mfaPreset} onClose={() => setMfaOpen(false)} onVerified={handleVerified} />
     </main>
   );
 }
