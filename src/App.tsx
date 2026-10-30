@@ -400,17 +400,109 @@ function MenuIcon({ name }: { name: "rename" | "share" | "delete" | "more" }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6" /></svg>;
 }
 
+// Home mobile (Figma "Anby MOBILE - Release 1.0 - AJUSTES"): o painel de dados de fundos fica dentro do card,
+// aberto por "Mais detalhes". As cores seguem as da home (gráficos de gancho da ANBY usam a mesma paleta).
+const MOBILE_FUND_LEGEND = [
+  ["fif", "FIF", "79,6%"],
+  ["structured", "Estruturados", "2,4%"],
+  ["etf", "ETF", "17,1%"],
+  ["offshore", "Off-shore", "0,9%"],
+] as const;
+// Altura de cada segmento (px, escala de 240px = 50 milhões): FIF, Estruturados, ETF, Off-shore.
+const MOBILE_FUND_BARS = [
+  ["Fev", "2026", 128, 8, 6, 9],
+  ["Mar", "", 89, 39, 30, 9],
+  ["Abr", "", 80, 43, 60, 9],
+  ["Mai", "", 101, 39, 47, 16],
+  ["Jun", "", 101, 39, 47, 16],
+  ["Jul", "", 82, 39, 34, 16],
+] as const;
+
+function PeriodChips({ active = "6M" }: { active?: string }) {
+  return (
+    <div className="m-chips" role="group" aria-label="Período">
+      {["6M", "12M", "24M", "36M"].map((label) => <button key={label} className={label === active ? "on" : ""} aria-pressed={label === active}>{label}</button>)}
+    </div>
+  );
+}
+
+function MobileFundDetails({ onOpenAssistant }: { onOpenAssistant: (scenario?: "fund-composition") => void }) {
+  return (
+    <div className="m-details" id="m-fund-details">
+      <ul className="m-legend">
+        {MOBILE_FUND_LEGEND.map(([key, label, share]) => <li key={key}><i className={key} /><span>{label}</span><b>{share}</b></li>)}
+      </ul>
+      <div className="m-block">
+        <PeriodChips />
+        <p className="m-fixed"><span>Jul 2026</span><b>11 TRI</b><span>total do mês</span></p>
+        <div className="m-stack-chart" aria-label="Composição do patrimônio líquido nos últimos 6 meses">
+          <span className="m-unit">milhões</span>
+          <div className="m-y"><span>50</span><span>40</span><span>30</span><span>20</span><span>10</span><span>0</span></div>
+          <div className="m-plot">
+            {MOBILE_FUND_BARS.map(([month, year, fif, structured, etf, offshore], index) => (
+              <div key={month} className={index === MOBILE_FUND_BARS.length - 1 ? "m-col current" : "m-col"}>
+                <div className="m-bar">
+                  <i className="offshore" style={{ height: offshore }} /><i className="etf" style={{ height: etf }} />
+                  <i className="structured" style={{ height: structured }} /><i className="fif" style={{ height: fif }} />
+                </div>
+                <small>{month}{year && <><br />{year}</>}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Gancho contextual: abre a ANBY com o contexto deste gráfico (Figma: frame chat 1.2). */}
+      <button className="m-anby-cta" onClick={() => onOpenAssistant("fund-composition")}>
+        <span>Compare as categorias de fundos e entenda a composição do PL</span>
+        <b><img src={`${A}/54cd1.png`} alt="" />Explore com a <img className="m-anby-logo" src={`${A}/anby-logo.png`} alt="ANBY" /></b>
+      </button>
+      <div className="m-block">
+        <div className="m-card-head"><h3>Fundos de investimento</h3><small>Julho 2026</small></div>
+        <strong className="m-number">34.095</strong>
+        <p className="m-caption">Quantidade de fundos (estoque)</p>
+        <p className="m-filter">Filtrar por:</p>
+        <PeriodChips />
+        <p className="m-fixed"><span>Mai 2026</span><i className="m-dot" /><b>33.626</b></p>
+        <div className="m-line-chart">
+          <span className="m-unit">mil</span>
+          <div className="m-y"><span>34</span><span>33</span><span>32</span></div>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none" aria-label="Evolução da quantidade de fundos">
+            <defs><linearGradient id="mAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0095d9" stopOpacity=".3" /><stop offset="1" stopColor="#0095d9" stopOpacity=".08" /></linearGradient></defs>
+            <polygon points="0,62 60,60 120,48 180,30 240,40 300,26 300,100 0,100" fill="url(#mAreaFill)" />
+            <polyline points="0,62 60,60 120,48 180,30 240,40 300,26" fill="none" stroke="#0095d9" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            <line x1="180" y1="0" x2="180" y2="100" stroke="#b2b5bf" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+          </svg>
+          <i className="m-line-point" style={{ left: "calc(34px + (100% - 34px) * .6)", top: "58px" }} />
+          <div className="m-months"><span>Fev<br />2026</span><span>Mar</span><span>Abr</span><span>Mai</span><span>Jun</span><span>Jul</span></div>
+        </div>
+      </div>
+      <div className="m-related">
+        <h3>Mais dados e publicações de fundos de investimento</h3>
+        {["Boletim de fundos de investimento", "Dashboard radar 175", "Dashboard de FIDCs"].map((title) => (
+          <article key={title}><img src={`${A}/c95e1.svg`} alt="" /><span>{title}</span><a href="#acessar" onClick={(event) => event.preventDefault()}>Acessar</a></article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PortalHome({ onOpenAssistant }: { onOpenAssistant: (scenario?: "fund-composition") => void }) {
+  const [fundDetailsOpen, setFundDetailsOpen] = useState(false);
   return (
     <div className="portal-home">
       <section className="portal-hero">
         <div className="portal-container">
-          <h1>Os dados que orientam o mercado financeiro<br /><strong>de forma gratuita e com a transparência ANBIMA</strong></h1>
+          <h1>Os dados que orientam o mercado financeiro<br className="desktop-break" /> <strong>de forma gratuita e com a transparência ANBIMA</strong></h1>
           <div className="portal-metrics">
-            <article className="metric-card">
+            <article className={fundDetailsOpen ? "metric-card has-details open" : "metric-card has-details"}>
               <div><h2>Fundos de Investimento</h2><small>Julho 2026</small></div>
               <div><strong>11 TRI</strong><p>Patrimônio líquido</p></div>
               <div className="metric-bar funds"><i /><i /><i /><i /></div>
+              <button className="m-more" onClick={() => setFundDetailsOpen(!fundDetailsOpen)} aria-expanded={fundDetailsOpen} aria-controls="m-fund-details">
+                {fundDetailsOpen ? "Menos detalhes" : "Mais detalhes"}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+              </button>
+              {fundDetailsOpen && <MobileFundDetails onOpenAssistant={onOpenAssistant} />}
             </article>
             <article className="metric-card">
               <div><h2>Títulos Privados</h2><small>Julho 2026</small></div>
@@ -592,6 +684,8 @@ export default function App() {
   const [logoutToast, setLogoutToast] = useState(false);
   // Botão "ir para o fim" do chat: só aparece quando o usuário rola para cima.
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  // Campo do chat cresce com o texto (como no Claude) até um limite; depois rola.
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [feedbackReason, setFeedbackReason] = useState("");
   const [feedbackDetails, setFeedbackDetails] = useState("");
   const [termsOpen, setTermsOpen] = useState(false);
@@ -881,9 +975,11 @@ export default function App() {
     }
   };
 
+  // Sair encerra a sessão, fecha a ANBY (o usuário volta à página onde estava) e mostra o toast sobre a página.
   const logout = () => {
     clearSession();
     setSession(null);
+    closeAssistant();
     setLogoutToast(true);
     window.setTimeout(() => setLogoutToast(false), 4000);
   };
@@ -908,6 +1004,15 @@ export default function App() {
     ];
     return () => timers.forEach(window.clearTimeout);
   }, [responding]);
+
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const max = Math.round(window.innerHeight * 0.3);
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  }, [question, assistantOpen]);
 
   // Esc fecha o modal "Como a Anby chegou a esta resposta".
   useEffect(() => {
@@ -1198,7 +1303,11 @@ export default function App() {
           <div className={active === 4 ? "chat-home rich-chat" : "chat-home"}>
             {!hasConversation && <div className="intro">
               <img className="anby-avatar" src={`${A}/54cd1.png`} alt="ANBY" />
-              <h1>{session ? `Olá, ${firstName(session.name)}, em que posso te ajudar` : "Olá, em que posso te ajudar"}<br />sobre <em>os dados do mercado?</em></h1>
+              <h1>
+                <span className="greeting-desktop">{session ? `Olá, ${firstName(session.name)}, em que posso te ajudar` : "Olá, em que posso te ajudar"}<br />sobre <em>os dados do mercado?</em></span>
+                {/* Mobile (Figma Release 1.0 - ajustes): saudação em três linhas. */}
+                <span className="greeting-mobile">{session ? `Olá, ${firstName(session.name)}!` : "Olá!"}<br />Vamos falar sobre os<br /><em>dados do mercado?</em></span>
+              </h1>
             </div>}
 
             {!hasConversation && (
@@ -1286,8 +1395,17 @@ export default function App() {
               <div className={voice === "recording" ? "composer recording" : "composer"}>
                 <div className="composer-main">
                   <textarea
+                    ref={composerRef}
+                    rows={2}
                     value={question}
                     onChange={(event) => { setQuestion(event.target.value); setTranscribed(false); }}
+                    onKeyDown={(event) => {
+                      // Enter envia; Shift+Enter quebra a linha (como no Claude).
+                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        sendQuestion();
+                      }
+                    }}
                     placeholder="Pergunte sobre fundos, renda fixa e mercado de capitais"
                     aria-label="Mensagem para a ANBY"
                     disabled={voice === "recording" || responding}
@@ -1420,7 +1538,6 @@ export default function App() {
             </div>
             <footer className="trace-footer">
               <p>Registro técnico para validação: os números da resposta vêm destas consultas. Dado pessoal e conteúdo exclusivo de associados não aparecem.</p>
-              <a href="#fontes" onClick={(event) => event.preventDefault()}>Todas as fontes que a Anby consulta</a>
             </footer>
           </section>
         </div>
