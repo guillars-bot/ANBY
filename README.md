@@ -49,6 +49,10 @@ Funcionalidades ocultas numa entrega continuam no código. Para reativar, troque
 - Removido o link "Todas as fontes que a Anby consulta".
 - Mobile (Figma "Anby MOBILE - Release 1.0- AJUSTES"): home com títulos e cards no novo layout, "Mais detalhes" no card de Fundos com o painel de dados e o gancho "Explore com a ANBY"; botão "Pergunte à ANBY" fixo durante o scroll; modal sobe de baixo para cima e ocupa toda a área abaixo do menu; saudação em três linhas; "×" sem círculo; campo do chat mais alto.
 
+- "Apagar conversa" pede confirmação no próprio submenu ("Excluir esta conversa?" com Cancelar / Excluir).
+- "Termos de uso" abre na área do chat, com "Voltar ao chat" fixo no topo.
+- Cursor do campo do chat começa no topo do campo.
+
 ### Cores dos gráficos
 - **Gráfico que nasce de um gancho da home** (ex.: "Explore com a ANBY" no painel de fundos): usa as mesmas cores do gráfico da home (FIF #80C342, Estruturados #DE761C, ETF #275DD2, Off-shore #FCAF17).
 - **Gráfico novo gerado no chat**: série única em #0095D9; com categorias, até 6 na ordem #275DD2, #DE761C, #034694, #80C342, #D6519D, #028A9B (7ª #FCAF17, 8ª #666A7A para "Outros"). Tabela: cabeçalho com texto #0079B1 sobre #EDF7FB. Card do indicador em #F8F9FA, sem contorno nem sombra.

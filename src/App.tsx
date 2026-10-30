@@ -692,6 +692,8 @@ export default function App() {
   const [conversationOverflows, setConversationOverflows] = useState(false);
   const conversationRef = useRef<HTMLDivElement>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  // Confirmação de exclusão dentro do próprio submenu da conversa.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [sharedId, setSharedId] = useState<number | null>(null);
@@ -707,7 +709,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(initialSession.session);
   const [sessionExpired, setSessionExpired] = useState(initialSession.expired);
   const [mfaOpen, setMfaOpen] = useState(false);
-  const [panel, setPanel] = useState<null | "about" | "connect">(null);
+  const [panel, setPanel] = useState<null | "about" | "connect" | "terms">(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -933,7 +935,7 @@ export default function App() {
     window.history.pushState({ anby: true }, "");
   };
 
-  const openPanel = (kind: "about" | "connect") => {
+  const openPanel = (kind: "about" | "connect" | "terms") => {
     setPanel(kind);
     setDrawerOpen(false);
     setOpenMenuId(null);
@@ -1212,7 +1214,7 @@ export default function App() {
                   key={item.id}
                   className={`conversation-item${active === item.id ? " selected" : ""}${openMenuId === item.id ? " menu-open" : ""}`}
                   onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget)) setOpenMenuId(null);
+                    if (!event.currentTarget.contains(event.relatedTarget)) { setOpenMenuId(null); setConfirmDeleteId(null); }
                   }}
                 >
                   {renamingId === item.id ? (
@@ -1246,19 +1248,28 @@ export default function App() {
                   {renamingId !== item.id && (
                   <button
                     className="conversation-menu-trigger"
-                    onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                    onClick={() => { setConfirmDeleteId(null); setOpenMenuId(openMenuId === item.id ? null : item.id); }}
                     aria-label={`Editar conversa ${item.title}`}
                     aria-expanded={openMenuId === item.id}
                   >
                     <MenuIcon name="more" />
                   </button>
                   )}
-                  {openMenuId === item.id && (
+                  {openMenuId === item.id && confirmDeleteId === item.id && (
+                    <div className="conversation-menu delete-confirm" role="alertdialog" aria-labelledby={`del-title-${item.id}`} aria-describedby={`del-desc-${item.id}`}>
+                      <p className="delete-confirm-title" id={`del-title-${item.id}`}>Excluir esta conversa?</p>
+                      <p className="delete-confirm-text" id={`del-desc-${item.id}`}>Ela sai da sua lista e não dá para desfazer.</p>
+                      <button autoFocus onClick={() => { setConfirmDeleteId(null); setOpenMenuId(null); }}><span>Cancelar</span></button>
+                      <div className="menu-divider" />
+                      <button className="delete-action" onClick={() => { setConfirmDeleteId(null); deleteConversation(item.id); }}><MenuIcon name="delete" /><span>Excluir</span></button>
+                    </div>
+                  )}
+                  {openMenuId === item.id && confirmDeleteId !== item.id && (
                     <div className="conversation-menu" role="menu">
                       <button onClick={() => startRename(item.id, item.title)} role="menuitem"><MenuIcon name="rename" /><span>Renomear</span></button>
                       {features.compartilharConversa && <button onClick={() => shareConversation(item.id)} role="menuitem"><MenuIcon name="share" /><span>Compartilhar</span></button>}
                       <div className="menu-divider" />
-                      <button className="delete-action" onClick={() => deleteConversation(item.id)} role="menuitem"><MenuIcon name="delete" /><span>Apagar conversa</span></button>
+                      <button className="delete-action" onClick={() => setConfirmDeleteId(item.id)} role="menuitem"><MenuIcon name="delete" /><span>Apagar conversa</span></button>
                     </div>
                   )}
                 </div>
@@ -1294,9 +1305,9 @@ export default function App() {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5 5 12M12 9l-3 3" /></svg>
           </button>
           {panel && (
-            <section className="panel-view" aria-label={panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
+            <section className="panel-view" aria-label={panel === "terms" ? "Termos de uso" : panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
               <div className="panel-bar"><button className="panel-back" onClick={() => setPanel(null)}>← Voltar ao chat</button></div>
-              <div className="panel-body">{panel === "about" ? <AboutPanel /> : <ConnectPanel />}</div>
+              <div className="panel-body">{panel === "connect" ? <ConnectPanel /> : <AboutPanel />}</div>
             </section>
           )}
           {tip && <div className={`side-tip ${tip.dir}`} style={{ top: tip.top, left: tip.left }} role="tooltip">{tip.text}</div>}
@@ -1450,7 +1461,7 @@ export default function App() {
                 )}
               </div>
               {transcribed && voice === "idle" && <p className="transcribed-status">Transcrito - Revise e envie</p>}
-              <p>A ANBY é uma ferramenta de IA da Anbima com finalidade exclusivamente informativa, não constituindo aconselhamento ou recomendação profissional, sendo recomendada a verificação das informações em fontes oficiais para tomada de decisão. Consulte os <button className="terms-link" onClick={() => setTermsOpen(true)}>Termos de uso</button> da IA antes de utilizar.</p>
+              <p>A ANBY é uma ferramenta de IA da Anbima com finalidade exclusivamente informativa, não constituindo aconselhamento ou recomendação profissional, sendo recomendada a verificação das informações em fontes oficiais para tomada de decisão. Consulte os <button className="terms-link" onClick={() => openPanel("terms")}>Termos de uso</button> da IA antes de utilizar.</p>
             </div>
           </div>
         </div>
