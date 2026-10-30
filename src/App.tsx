@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import MfaModal from "./MfaModal";
+import { features } from "./features";
 import { clearSession, firstName, initials, loadSession, saveSession, type Session } from "./session";
 
 const A = "/assets";
@@ -78,6 +79,31 @@ const imaBRows = [
   ["ago/2026 (31/08)", "+1,28%", "11.616,57", 1.28],
   ["set/2026 (30/09)", "+2,01%", "11.849,51", 2.01],
 ] as const;
+
+// "Mostrar como cheguei aqui": consultas que a ANBY fez para montar cada resposta (dados simulados).
+type TraceStep = { title: string; params: string; source: string; date: string };
+const TRACE_BY_QUESTION: Record<string, TraceStep[]> = {
+  "Qual a taxa indicativa da NTN-B 2035?": [
+    { title: "Consultando títulos públicos", params: "tipo_titulo: NTN-B · ano_vencimento: 2035", source: "ANBIMA Feed", date: "26/10/2026" },
+  ],
+  "Qual o PL e o número de cotistas de um fundo da Kinea?": [
+    { title: "Consultando fundos de investimento", params: "gestor: Kinea · campos: patrimonio_liquido, numero_cotistas", source: "Boletim de fundos de investimento", date: "30/09/2026" },
+  ],
+  "Como está a curva de crédito AAA de debêntures?": [
+    { title: "Consultando curvas de crédito", params: "ativo: debêntures · rating: AAA", source: "ANBIMA Feed", date: "26/10/2026" },
+  ],
+  "Mostra o resultado do IMA-B com a composição": [
+    { title: "Consultando índices IMA", params: "indice: IMA-B · campos: composicao, variacao_mensal", source: "ANBIMA Feed", date: "19/10/2026" },
+  ],
+  "Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês": [
+    { title: "Consultando índices IMA", params: "indice: IMA-B 5 · periodo: out/2025–set/2026", source: "ANBIMA Feed", date: "19/10/2026" },
+  ],
+  "Compare as categorias de fundos e entenda a composição do PL": [
+    { title: "Consultando fundos de investimento", params: "campo: patrimonio_liquido · categorias: FIF, Estruturados, ETF, Off-shore", source: "Boletim de fundos de investimento", date: "31/07/2026" },
+  ],
+};
+const traceFor = (question: string): TraceStep[] =>
+  TRACE_BY_QUESTION[question] ?? [{ title: "Consultando publicações", params: `tema: ${question}`, source: "ANBIMA Feed", date: "26/10/2026" }];
 
 type MenuDef = { key: string; label: string; sections: string[]; counter?: string; items: { label: string; badge?: string }[]; promo: { tag?: string; text: string } };
 const API_PROMO = "Consuma dados de mercado via API de forma automatizada.";
@@ -247,6 +273,23 @@ function SendIcon() {
   );
 }
 
+function TraceIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="2.5" cy="2.5" r="1.5" /><circle cx="9.5" cy="9.5" r="1.5" />
+      <path d="M4 2.5h3.5a2 2 0 0 1 0 4h-3a2 2 0 0 0 0 4H8" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m2.5 6.5 2.3 2.3L9.5 3.5" /></svg>;
+}
+
+function ArrowDownIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 2v10M3 8l4 4 4-4" /></svg>;
+}
+
 function ChatIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0095d9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -264,7 +307,7 @@ function InfoIcon() {
   );
 }
 
-function RichMarketResponse() {
+function RichMarketResponse({ actions }: { actions: ReactNode }) {
   return (
     <>
       <div className="user-row"><p>Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês</p></div>
@@ -295,18 +338,14 @@ function RichMarketResponse() {
             <li>Esses são os números do subíndice <strong>IMA-B 5</strong> (NTN-B com vencimento em até 5 anos). Se você quiser o <strong>IMA-B cheio</strong> ou o <strong>IMA-B 5+</strong> mês a mês, consigo montar a mesma série.</li>
             <li>Quer que eu estenda o período ou troque a visualização para o número-índice acumulado?</li>
           </ul>
-          <div className="response-actions">
-            <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-            <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-            <button data-tooltip="Resposta insatisfatória" aria-label="Resposta insatisfatória"><img src={`${A}/4e98f.svg`} alt="" /></button>
-          </div>
+          {actions}
         </div>
       </div>
     </>
   );
 }
 
-function FundCompositionResponse() {
+function FundCompositionResponse({ actions }: { actions: ReactNode }) {
   const bars = [
     [70,11,8,11,"Ago 25"],[42,27,20,11,"Set 25"],[58,10,17,15,"Out 25"],[46,25,12,17,"Nov 25"],
     [33,31,27,9,"Dez 25"],[45,13,24,18,"Jan 26"],[57,17,9,17,"Fev 26"],[40,10,22,28,"Mar 26"],
@@ -326,11 +365,7 @@ function FundCompositionResponse() {
             </div>
           </section>
           <p>Os <strong>FIF</strong> representam a maior parcela do patrimônio, enquanto fundos estruturados ganharam participação em alguns períodos. ETF e Off-shore mantêm participação menor, mas complementam a diversificação da indústria.</p>
-          <div className="response-actions">
-            <button data-tooltip="Copiar" aria-label="Copiar resposta"><img src={`${A}/6030c.svg`} alt="" /></button>
-            <button data-tooltip="Resposta satisfatória" aria-label="Resposta satisfatória"><img src={`${A}/4a340.svg`} alt="" /></button>
-            <button data-tooltip="Resposta insatisfatória" aria-label="Resposta insatisfatória"><img src={`${A}/4e98f.svg`} alt="" /></button>
-          </div>
+          {actions}
         </div>
       </div>
     </>
@@ -549,6 +584,14 @@ export default function App() {
   const [feedbackTarget, setFeedbackTarget] = useState(0);
   // Pergunta clicada antes do login: é enviada automaticamente após a validação.
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  // Feedback negativo enviado: mostra o aviso de agradecimento abaixo do botão antes de fechar o modal.
+  const [feedbackThanks, setFeedbackThanks] = useState(false);
+  // "Mostrar como cheguei aqui": pergunta da resposta cujo caminho está aberto.
+  const [traceQuestion, setTraceQuestion] = useState<string | null>(null);
+  // Toast de saída ("Você saiu da ANBY!").
+  const [logoutToast, setLogoutToast] = useState(false);
+  // Botão "ir para o fim" do chat: só aparece quando o usuário rola para cima.
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [feedbackReason, setFeedbackReason] = useState("");
   const [feedbackDetails, setFeedbackDetails] = useState("");
   const [termsOpen, setTermsOpen] = useState(false);
@@ -682,7 +725,7 @@ export default function App() {
     setFeedbackOpen(true);
   };
 
-  const renderActions = (index: number, text: string) => {
+  const renderActions = (index: number, text: string, answerQuestion: string) => {
     const copiedHere = copiedIndex === index;
     const rating = ratings[index];
     return (
@@ -690,15 +733,16 @@ export default function App() {
         <button onClick={() => copyAnswer(index, text)} data-tooltip={copiedHere ? "Copiado!" : "Copiar"} aria-label={copiedHere ? "Resposta copiada" : "Copiar resposta"}>
           <img src={`${A}/${copiedHere ? "bddb2.svg" : "6030c.svg"}`} alt="" />
         </button>
-        <button
-          className={rating === "up" ? "selected" : ""}
-          onClick={() => toggleLike(index)}
-          data-tooltip="Resposta satisfatória"
-          aria-label="Marcar resposta como satisfatória"
-          aria-pressed={rating === "up"}
-        >
-          <img src={`${A}/${rating === "up" ? "757a8.svg" : "4a340.svg"}`} alt="" />
-        </button>
+        {rating === "up" ? (
+          // Feedback positivo: o ícone dá lugar a "obrigada ✓" (Figma: input chat - positive feedback). Clicar desfaz.
+          <button className="feedback-thanks-inline" onClick={() => toggleLike(index)} aria-label="Resposta marcada como satisfatória. Desfazer" aria-pressed="true">
+            <span>obrigada</span><CheckIcon />
+          </button>
+        ) : (
+          <button onClick={() => toggleLike(index)} data-tooltip="Resposta satisfatória" aria-label="Marcar resposta como satisfatória" aria-pressed="false">
+            <img src={`${A}/4a340.svg`} alt="" />
+          </button>
+        )}
         <button
           className={rating === "down" ? "selected" : ""}
           onClick={() => openFeedback(index)}
@@ -708,22 +752,34 @@ export default function App() {
         >
           <img src={`${A}/${rating === "down" ? "8531e.svg" : "4e98f.svg"}`} alt="" />
         </button>
+        <button className="trace-button" onClick={() => setTraceQuestion(answerQuestion)} data-tooltip="Mostrar como cheguei aqui" aria-label="Mostrar como cheguei aqui">
+          <TraceIcon />
+        </button>
       </div>
     );
   };
 
   const closeFeedback = () => {
     setFeedbackOpen(false);
+    setFeedbackThanks(false);
     setFeedbackReason("");
     setFeedbackDetails("");
   };
 
+  // "Outros..." torna o campo de informações adicionais obrigatório.
+  const detailsRequired = feedbackReason === "Outros...";
+  const feedbackReady = Boolean(feedbackReason) && (!detailsRequired || feedbackDetails.trim().length > 0);
+
   const submitFeedback = () => {
-    if (!feedbackReason) return;
-    setFeedbackOpen(false);
+    if (!feedbackReady || feedbackThanks) return;
     setRatings((current) => ({ ...current, [feedbackTarget]: "down" }));
-    setFeedbackReason("");
-    setFeedbackDetails("");
+    setFeedbackThanks(true);
+    window.setTimeout(() => {
+      setFeedbackOpen(false);
+      setFeedbackThanks(false);
+      setFeedbackReason("");
+      setFeedbackDetails("");
+    }, 2500);
   };
 
   const startRename = (id: number, title: string) => {
@@ -761,6 +817,7 @@ export default function App() {
     setTermsOpen(false);
     setDrawerOpen(false);
     setFeedbackOpen(false);
+    setTraceQuestion(null);
     setMfaOpen(false);
     setVoice("idle");
     setTranscribed(false);
@@ -827,6 +884,8 @@ export default function App() {
   const logout = () => {
     clearSession();
     setSession(null);
+    setLogoutToast(true);
+    window.setTimeout(() => setLogoutToast(false), 4000);
   };
 
   // O botão voltar do navegador devolve o usuário à tela de onde abriu o assistente.
@@ -850,6 +909,14 @@ export default function App() {
     return () => timers.forEach(window.clearTimeout);
   }, [responding]);
 
+  // Esc fecha o modal "Como a Anby chegou a esta resposta".
+  useEffect(() => {
+    if (!traceQuestion) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setTraceQuestion(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [traceQuestion]);
+
   const hasConversation = entryScenario !== null || active !== null || sentQuestion.length > 0;
   const currentQuestion = entryScenario === "fund-composition" ? "Compare as categorias de fundos e entenda a composição do PL" : sentQuestion || conversations.find((item) => item.id === active)?.title || "";
   const currentDialogue = active ? (dialogueByConversation as Record<number, { answer: string; followups: string[][] } | undefined>)[active] || genericDialogue : genericDialogue;
@@ -861,6 +928,7 @@ export default function App() {
       return;
     }
 
+    setShowScrollBottom(false);
     const checkOverflow = () => setConversationOverflows(element.scrollHeight > element.clientHeight + 1);
     checkOverflow();
     const observer = new ResizeObserver(checkOverflow);
@@ -1033,8 +1101,8 @@ export default function App() {
             <button className="history-label" onClick={() => setRecentExpanded(!recentExpanded)} aria-expanded={recentExpanded}>
               Conversas recentes <img className={recentExpanded ? "" : "rotated"} src={`${A}/cc7eb.svg`} alt="" />
             </button>
-            {recentExpanded && <div className="conversation-list">
-              {conversations.slice(0, showAllConversations ? 4 : 3).map((item) => (
+            {recentExpanded && <div className={showAllConversations ? "conversation-list show-all" : "conversation-list"}>
+              {(showAllConversations ? conversations : conversations.slice(0, 3)).map((item) => (
                 <div
                   key={item.id}
                   className={`conversation-item${active === item.id ? " selected" : ""}${openMenuId === item.id ? " menu-open" : ""}`}
@@ -1083,7 +1151,7 @@ export default function App() {
                   {openMenuId === item.id && (
                     <div className="conversation-menu" role="menu">
                       <button onClick={() => startRename(item.id, item.title)} role="menuitem"><MenuIcon name="rename" /><span>Renomear</span></button>
-                      <button onClick={() => shareConversation(item.id)} role="menuitem"><MenuIcon name="share" /><span>Compartilhar</span></button>
+                      {features.compartilharConversa && <button onClick={() => shareConversation(item.id)} role="menuitem"><MenuIcon name="share" /><span>Compartilhar</span></button>}
                       <div className="menu-divider" />
                       <button className="delete-action" onClick={() => deleteConversation(item.id)} role="menuitem"><MenuIcon name="delete" /><span>Apagar conversa</span></button>
                     </div>
@@ -1092,19 +1160,19 @@ export default function App() {
               ))}
               {conversations.length > 3 && <button className="show-all-conversations" onClick={() => setShowAllConversations(!showAllConversations)}>{showAllConversations ? "Ver menos" : "Ver mais"}</button>}
             </div>}
-            <div className="sidebar-group">
+            {features.conectarClaude && <div className="sidebar-group">
               <p>Soluções</p>
               <button className="sidebar-link" onClick={() => openPanel("connect")}><img src={`${A}/b1265.svg`} alt="" /><span>Conectar no Claude</span><b>Novo</b></button>
-            </div>
-            <div className="sidebar-group">
+            </div>}
+            {features.sobreAnby && <div className="sidebar-group">
               <p>Saiba mais</p>
               <button className="sidebar-link" onClick={() => openPanel("about")}><InfoIcon /><span>Sobre a ANBY</span></button>
-            </div>
+            </div>}
             </div>
             <div className="collapsed-nav">
               <button className="rail-button" aria-label="Minhas conversas" onClick={() => { hideTip(); setSidebarCollapsed(false); }} {...tipProps("Minhas conversas", "r", sidebarCollapsed)}><ChatIcon /></button>
-              <button className="rail-button" aria-label="Conectar no Claude" onClick={() => openPanel("connect")} {...tipProps("Conectar no Claude", "r", sidebarCollapsed)}><img src={`${A}/b1265.svg`} alt="" /></button>
-              <button className="rail-button" aria-label="Sobre a ANBY" onClick={() => openPanel("about")} {...tipProps("Sobre a ANBY", "r", sidebarCollapsed)}><InfoIcon /></button>
+              {features.conectarClaude && <button className="rail-button" aria-label="Conectar no Claude" onClick={() => openPanel("connect")} {...tipProps("Conectar no Claude", "r", sidebarCollapsed)}><img src={`${A}/b1265.svg`} alt="" /></button>}
+              {features.sobreAnby && <button className="rail-button" aria-label="Sobre a ANBY" onClick={() => openPanel("about")} {...tipProps("Sobre a ANBY", "r", sidebarCollapsed)}><InfoIcon /></button>}
             </div>
             </div>
             <div className="history-footer">
@@ -1149,8 +1217,16 @@ export default function App() {
 
             {hasConversation && (
               <div className="conversation-viewport has-overflow">
-              <div className="conversation-scroll" aria-live="polite" ref={conversationRef}>
-                {entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse />) : active === 4 ? <RichMarketResponse /> : (responding || interrupted) && sentQuestion ? (
+              <div
+                className="conversation-scroll"
+                aria-live="polite"
+                ref={conversationRef}
+                onScroll={(event) => {
+                  const el = event.currentTarget;
+                  setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 80);
+                }}
+              >
+                {entryScenario === "fund-composition" ? (scenarioLoading ? <AssistantThinking stage={loadingStage} /> : <FundCompositionResponse actions={renderActions(101, "O patrimônio líquido dos fundos alcançou R$ 11 trilhões em julho de 2026.", "Compare as categorias de fundos e entenda a composição do PL")} />) : active === 4 ? <RichMarketResponse actions={renderActions(100, "Os resultados vieram pelo subíndice IMA-B 5. Aqui está a evolução da variação mensal.", "Mostre o resultado do IMA-B com a composição e traga em gráfico de evolução os valores de variação mês a mês")} /> : (responding || interrupted) && sentQuestion ? (
                   responding
                     ? <AssistantThinking stage={thinkStage} question={sentQuestion} labels={["Consultando memoria...", "Analisando...", "Gerando a resposta..."]} />
                     : <>
@@ -1165,7 +1241,7 @@ export default function App() {
                   <img src={`${A}/54cd1.png`} alt="ANBY" />
                   <div className="ai-content">
                     <p>{currentDialogue.answer}</p>
-                    {renderActions(0, currentDialogue.answer)}
+                    {renderActions(0, currentDialogue.answer, currentQuestion)}
                   </div>
                 </div>
                 <div className="user-row second-message">
@@ -1175,7 +1251,7 @@ export default function App() {
                   <img src={`${A}/54cd1.png`} alt="ANBY" />
                   <div className="ai-content">
                     <p>{currentDialogue.followups[0][1]}</p>
-                    {renderActions(1, currentDialogue.followups[0][1])}
+                    {renderActions(1, currentDialogue.followups[0][1], currentDialogue.followups[0][0])}
                   </div>
                 </div>
                 {currentDialogue.followups.slice(1).map(([followupQuestion, followupAnswer]: string[], followupIndex: number) => (
@@ -1187,13 +1263,22 @@ export default function App() {
                       <img src={`${A}/54cd1.png`} alt="ANBY" />
                       <div className="ai-content">
                         <p>{followupAnswer}</p>
-                        {renderActions(followupIndex + 2, followupAnswer)}
+                        {renderActions(followupIndex + 2, followupAnswer, followupQuestion)}
                       </div>
                     </div>
                   </div>
                 ))}
                 </>}
               </div>
+              <button
+                className={showScrollBottom ? "scroll-bottom visible" : "scroll-bottom"}
+                onClick={() => conversationRef.current?.scrollTo({ top: conversationRef.current.scrollHeight, behavior: "smooth" })}
+                aria-label="Ir para o fim da conversa"
+                tabIndex={showScrollBottom ? 0 : -1}
+                aria-hidden={!showScrollBottom}
+              >
+                <ArrowDownIcon />
+              </button>
               </div>
             )}
 
@@ -1208,7 +1293,7 @@ export default function App() {
                     disabled={voice === "recording" || responding}
                   />
                   <div className="composer-actions">
-                    <button
+                    {features.ditadoPorVoz && <button
                       className={voice === "recording" ? "mic-button is-recording" : "mic-button"}
                       onClick={toggleRecording}
                       disabled={responding}
@@ -1216,7 +1301,7 @@ export default function App() {
                       {...tipProps(voice === "recording" ? "Parar e transcrever" : "Ditar a pergunta", "l")}
                     >
                       {voice === "recording" ? <StopIcon /> : <MicIcon />}
-                    </button>
+                    </button>}
                     {responding ? (
                       <button className="send-button pause-button" onClick={pauseResponse} aria-label="Parar resposta" {...tipProps("Parar resposta", "l")}><PauseIcon /></button>
                     ) : (
@@ -1277,12 +1362,16 @@ export default function App() {
                 <img src={`${A}/6d1f0.svg`} alt="" />
               </div>
 
-              <label className="field-label details-label" htmlFor="feedback-details">Informações adicionais (opcional)</label>
+              <label className="field-label details-label" htmlFor="feedback-details">
+                Informações adicionais {detailsRequired ? <span className="required-flag">(campo obrigatório)</span> : "(opcional)"}
+              </label>
               <textarea
                 id="feedback-details"
                 value={feedbackDetails}
                 onChange={(event) => setFeedbackDetails(event.target.value)}
                 maxLength={1000}
+                required={detailsRequired}
+                aria-required={detailsRequired}
                 placeholder="Adicione mais detalhes"
               />
               <span className={feedbackDetails.length === 1000 ? "character-count limit" : "character-count"}>
@@ -1293,11 +1382,55 @@ export default function App() {
               <img src={`${A}/02411.svg`} alt="" />
               <p>Enviar feedback incluirá toda a conversa para aprimorar a ANBY.</p>
             </div>
-            <button className="feedback-submit" disabled={!feedbackReason} onClick={submitFeedback}>Enviar</button>
+            <button className="feedback-submit" disabled={!feedbackReady || feedbackThanks} onClick={submitFeedback}>Enviar</button>
+            {feedbackThanks && (
+              <p className="feedback-success" role="status">
+                <InfoIcon /><span><b>Obrigado pelo feedback!</b> Isso nos ajuda a melhorar a assistente.</span>
+              </p>
+            )}
           </section>
         </div>
       )}
       </div>}
+      {traceQuestion && (
+        <div className="feedback-backdrop" role="presentation" onClick={() => setTraceQuestion(null)}>
+          <section className="trace-modal" role="dialog" aria-modal="true" aria-labelledby="trace-title" onClick={(event) => event.stopPropagation()}>
+            <header className="trace-heading">
+              <div>
+                <h2 id="trace-title">Como a Anby chegou a esta resposta</h2>
+                <p>{traceFor(traceQuestion).length} {traceFor(traceQuestion).length === 1 ? "passo" : "passos"} · consultas feitas ao ANBIMA Feed no momento da pergunta</p>
+              </div>
+              <button className="feedback-close" onClick={() => setTraceQuestion(null)} aria-label="Fechar"><img src={`${A}/c9d78.svg`} alt="" /></button>
+            </header>
+            <div className="trace-body">
+              {traceFor(traceQuestion).map((step, index) => (
+                <article className="trace-step" key={step.title + index}>
+                  <div className="trace-step-head">
+                    <span className="trace-index">{index + 1}</span>
+                    <h3>{step.title}</h3>
+                    <span className="trace-status">Consulta concluída</span>
+                  </div>
+                  <dl>
+                    <div><dt>Parâmetros</dt><dd className="mono">{step.params}</dd></div>
+                    <div><dt>Fonte</dt><dd className="mono">{step.source}</dd></div>
+                    <div><dt>Data de referência</dt><dd>{step.date}</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+            <footer className="trace-footer">
+              <p>Registro técnico para validação: os números da resposta vêm destas consultas. Dado pessoal e conteúdo exclusivo de associados não aparecem.</p>
+              <a href="#fontes" onClick={(event) => event.preventDefault()}>Todas as fontes que a Anby consulta</a>
+            </footer>
+          </section>
+        </div>
+      )}
+      {logoutToast && (
+        <div className="anby-toast" role="status">
+          <img src={`${A}/54cd1.png`} alt="" />
+          <div><b>Você saiu da ANBY!</b><span>Até a próxima.</span></div>
+        </div>
+      )}
       <MfaModal open={mfaOpen && assistantOpen} expired={sessionExpired} onClose={() => setMfaOpen(false)} onVerified={handleVerified} />
     </main>
   );

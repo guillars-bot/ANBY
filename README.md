@@ -27,5 +27,24 @@ npm run dev
 - Código de validação de demonstração: **123456** (`000000` simula código expirado). Constantes em `src/MfaModal.tsx`.
 - Nenhum dado sai do navegador. Use apenas dados fictícios; URLs da Netlify são públicas por padrão.
 
+## Versões
+Cada versão aprovada recebe uma tag no Git (`v1.0`, `v1.1`…). O ramo `main` é sempre a versão aprovada; cada pacote de trabalho nasce num ramo próprio (ex.: `v1.1-ajustes-figma`).
+
+### Funcionalidades ligáveis (`src/features.ts`)
+Funcionalidades ocultas numa entrega continuam no código. Para reativar, troque a chave para `true`:
+`conectarClaude`, `ditadoPorVoz`, `compartilharConversa`, `sobreAnby`.
+
+### v1.1 — Release 1.0 do Figma (em validação)
+- Ocultos (chaves em `false`): Conectar no Claude, ditado por voz, "Compartilhar" no submenu das conversas e "Sobre a ANBY" na barra lateral.
+- "Mostrar como cheguei aqui": novo ícone nas ações de cada resposta, abre o passo a passo com Parâmetros, Fonte e Data de referência.
+- Feedback positivo mostra "obrigada ✓"; no negativo, "Outros…" torna o campo de detalhes obrigatório e o envio exibe "Obrigado pelo feedback!".
+- Botão de ir para o fim do chat (aparece só ao rolar para cima).
+- Toast "Você saiu da ANBY! Até a próxima." ao sair.
+- "Ver mais" nas conversas recentes; acima de 4 conversas a lista rola.
+
+### v1.0 — 29/out/2026
+- Protótipo completo (inclui Conectar no Claude e ditado por voz).
+- Correções dos testes: e-mail aceita qualquer domínio válido, ações em todas as respostas, nome do usuário da sessão na barra lateral, pergunta retomada após o login.
+
 ## Pendências do design (marcadas "Em aberto")
 Tela de Termos de uso; exceção do botão flutuante quando há drawer aberto; validação automática do código sem clicar em "Confirmar".
