@@ -41,6 +41,7 @@ Funcionalidades ocultas numa entrega continuam no código. Para reativar, troque
 - Regras visuais: aviso de sistema em cinza (#666) sem ações; aviso de resposta cortada em itálico cinza; recusas sem "mostrar como cheguei aqui"; erros de acesso em vermelho (#BD3232) sob o campo ou o botão.
 - Validações reais do acesso passaram a usar os textos oficiais ("Informe o seu nome.", "Informe um e-mail válido, como voce@empresa.com.br.", "Código inválido ou expirado…", "Muitas tentativas com código errado…").
 - "ANBY" sempre em maiúsculas nos textos do protótipo.
+- Correções 03/nov: sem balão vazio ao passar o mouse em "obrigada ✓"; aviso "Obrigado pelo feedback!" com ícone e texto verdes no padrão do Figma.
 
 ### v1.1 — Release 1.0 do Figma (em validação)
 - Ocultos (chaves em `false`): Conectar no Claude, ditado por voz, "Compartilhar" no submenu das conversas e "Sobre a ANBY" na barra lateral.

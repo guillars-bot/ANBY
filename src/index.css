@@ -1254,3 +1254,12 @@ h1 em { color: #0095d9; font-style: normal; }
   .scenario-fab b { display: none; }
   .scenario-panel { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100dvh - 80px); }
 }
+
+/* ===== v1.2 · Correções (03/nov) ===== */
+/* Botão "obrigada ✓" não tem tooltip: some o balão vazio. */
+.response-actions button:not([data-tooltip])::after,
+.response-actions button:not([data-tooltip])::before { content: none; display: none; }
+/* Aviso de sucesso do feedback negativo no padrão do Figma (ícone e texto verdes). */
+.feedback-success { padding: 12px 16px; gap: 10px; border: 1px solid #5cb66a; border-radius: 4px; background: #e3f4e5; color: #2e7d32; font-size: 13px; line-height: 18px; }
+.feedback-success svg { width: 16px; height: 16px; color: #2e7d32; }
+.feedback-success b { color: #2e7d32; }

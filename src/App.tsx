@@ -299,6 +299,17 @@ function ChatIcon() {
   );
 }
 
+// Ícone do aviso de sucesso (padrão do Figma): círculo verde preenchido com o "i" branco.
+function SuccessInfoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="8" cy="8" r="8" fill="currentColor" />
+      <rect x="7.1" y="6.6" width="1.8" height="5.2" rx=".9" fill="#fff" />
+      <circle cx="8" cy="4.6" r="1.05" fill="#fff" />
+    </svg>
+  );
+}
+
 function InfoIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0095d9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1638,7 +1649,7 @@ export default function App() {
             <button className="feedback-submit" disabled={!feedbackReady || feedbackThanks} onClick={submitFeedback}>Enviar</button>
             {feedbackThanks && (
               <p className="feedback-success" role="status">
-                <InfoIcon /><span><b>Obrigado pelo feedback!</b> Isso nos ajuda a melhorar a assistente.</span>
+                <SuccessInfoIcon /><span><b>Obrigado pelo feedback!</b> Isso nos ajuda a melhorar a assistente.</span>
               </p>
             )}
           </section>
