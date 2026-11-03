@@ -4,7 +4,7 @@ Este arquivo orienta **quem vai desenvolver** a ANBY e **assistentes de IA** (Cl
 
 - **O que é:** protótipo navegável da ANBY, a assistente de IA da ANBIMA que responde sobre os dados do ANBIMA Data (ANBIMA Feed e boletins de Fundos de Investimento e Mercado de Capitais). Ela abre como um modal sobre o portal ANBIMA Data.
 - **Natureza do código:** protótipo de design. Os fluxos e estados são reais; o back-end é **simulado** (respostas, código de acesso, sessão). Ver "O que é simulado" abaixo.
-- **Fontes de verdade, nesta ordem:** 1) Figma, arquivo "DAT – Anby", página "Nova Anby (Release 1.0)" (seções Desktop, Mobile, Mobile Ajustes e "Anby – Erros e exceções (Release 1.0)"); 2) este guia; 3) `docs/ESPECIFICACOES-DE-DESIGN.md`; 4) o código. Se o código divergir do Figma, vale o Figma.
+- **Fontes de verdade, nesta ordem:** 1) [Figma do desenvolvedor "DAT – NOVA Anby (Liqi)"](https://www.figma.com/design/DiLBlJPT2grYXociQGtxPx/DAT----NOVA-Anby--Liqi-?node-id=0-1): páginas "✅ --- PRONTO PARA DESENVOLVIMENTO" e "Nova Anby (Release 1.0)" (seções Desktop, Mobile, Mobile Ajustes e "Anby – Erros e exceções (Release 1.0)"); a página "Pontos a definir" não deve ser implementada sem confirmação do design; 2) este guia; 3) `docs/ESPECIFICACOES-DE-DESIGN.md`; 4) o código. Se o código divergir do Figma, vale o Figma.
 - **Especificações visuais** (cores, tipografia, espaçamentos, componentes e estados): `docs/ESPECIFICACOES-DE-DESIGN.md` e `docs/tokens.json`.
 - **Histórico de versões:** `README.md`.
 
