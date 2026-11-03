@@ -1,6 +1,14 @@
-# Nova ANBY · Protótipo ANBIMA Data (V1.0)
+# Nova ANBY · Protótipo ANBIMA Data (Release 1.0)
 
-Protótipo navegável do assistente ANBY sobre a Home do ANBIMA Data. React 19 + Vite 8 + Tailwind CSS 4.
+Protótipo navegável da ANBY, a assistente de IA da ANBIMA, sobre a home do ANBIMA Data. React 19 + Vite 8 + Tailwind CSS 4.
+
+## Handoff: comece por aqui
+| Arquivo | Para quê |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | Guia do projeto para quem desenvolve e para assistentes de IA: escopo, regras de texto e de comportamento, o que é simulado, o que não fazer |
+| [`docs/ESPECIFICACOES-DE-DESIGN.md`](docs/ESPECIFICACOES-DE-DESIGN.md) | Cores, tipografia, espaçamentos, raios, sombras, layout, componentes e estados |
+| [`docs/tokens.json`](docs/tokens.json) | Os mesmos valores em formato de tokens (W3C Design Tokens) |
+| Figma "DAT – Anby", página "Nova Anby (Release 1.0)" | Fonte de verdade visual, incluindo a seção "Anby – Erros e exceções (Release 1.0)" |
 
 ## Rodar localmente
 ```bash
