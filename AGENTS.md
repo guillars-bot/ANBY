@@ -125,7 +125,7 @@ Textos em `src/scenarios.ts`; telas no Figma, seção "Anby – Erros e exceçõ
 - Não usar dados pessoais reais no protótipo (os links do Netlify são públicos).
 - Não carregar fontes de `static.figma.com` em produção: hospedar a Lato (ver especificações).
 
-## Pendências em aberto
-- Validar com a Liqi o modelo de "Mostrar como cheguei aqui" (campos e fontes).
-- "Mais detalhes" nos cards de Títulos privados e públicos (mobile): só o de Fundos está desenhado.
-- Regra de nome com 2 palavras: confirmar se continua (o documento de erros só define o nome em branco).
+## Pendência em aberto: regra do nome completo
+- **Figma (anotação do passo 1 do acesso):** o nome só é válido com pelo menos 2 palavras separadas por espaço. O protótipo segue essa regra e, com uma palavra só, mostra "Insira o nome completo".
+- **Documento de cenários de erro (29/10/2026):** só define o nome em branco ("Informe o seu nome."). Nos prints da implementação atual, um nome de uma palavra só ("Guilherme") é aceito e o código é enviado.
+- **Decisão necessária (design):** manter a exigência de 2 palavras (e então oficializar a mensagem "Insira o nome completo" no documento de textos) ou aceitar qualquer nome não vazio (e remover a regra do protótipo). Até a decisão, não alterar o comportamento atual.
