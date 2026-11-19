@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { MfaPreset } from "./scenarios";
+import "./mfa-legal.css";
 
 // Textos oficiais (documento de cenários de erro e exceção, 29/10/2026).
 const MSG = {
@@ -22,6 +23,33 @@ const LOCK_SECONDS = 15 * 60;
 const DEMO_CODE = "123456";
 const EXPIRED_CODE = "000000";
 const PORTAL_URL = "https://www.anbima.com.br/pt_br/institucional/protecao-de-dados.htm";
+
+// Aviso legal do acesso (Figma "ANBY / Gate / Legal Notice", passos 1 e 2, 19/11/2026).
+// Texto oficial: não reescrever. O último parágrafo termina com o link "portal" (ver LegalNotice).
+const LEGAL_NOTICE = [
+  "A ANBY consiste em sistema de inteligência artificial desenvolvido pela ANBIMA para auxiliar nas dúvidas relacionadas aos dados do mercado financeiro do ANBIMA Data.",
+  "Apesar de todo o esforço para assegurar a exatidão e a atualização das respostas, as informações fornecidas têm fins exclusivamente informativos, podendo conter imprecisões, omissões e/ou interpretações equivocadas.",
+  "As respostas fornecidas pela ANBY não constituem, nem devem ser interpretadas como aconselhamento, consultoria, parecer, indicação de investimento ou orientação de natureza profissional, jurídica e/ou financeira, tampouco como recomendação, conselho, indicação, sugestão, aviso ou garantia de resultado.",
+  "ANBIMA não responde por decisões, perdas ou danos decorrentes do uso das respostas e qualquer decisão de investimento ou de negócio é de responsabilidade exclusiva do usuário.",
+  "As respostas são geradas automaticamente por IA e não há garantia de disponibilidade ou continuidade e não substitui a consulta as fontes oficiais.",
+];
+
+function LegalNotice() {
+  return (
+    <aside className="mfa-legal-notice" aria-label="Aviso sobre a ANBY e o uso de dados pessoais">
+      <svg className="mfa-legal-icon" width="16" height="16" viewBox="0 0 12.8 12.8" fill="none" aria-hidden="true">
+        <path d="M5.76 3.2h1.28v1.28H5.76V3.2Zm0 2.56h1.28V9.6H5.76V5.76ZM6.4 0a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 6.4 0Zm0 11.52a5.12 5.12 0 1 1 0-10.24 5.12 5.12 0 0 1 0 10.24Z" fill="#0095D9" />
+      </svg>
+      <div className="mfa-legal-copy">
+        {LEGAL_NOTICE.map((text) => <p key={text}>{text}</p>)}
+        <p>
+          Os dados pessoais usados serão coletados e tratados em conformidade com a LGPD (Lei 13.709/18). Caso o titular dos dados pessoais deseje exercer algum de seus direitos, pode acessar nosso{" "}
+          <a href={PORTAL_URL} target="_blank" rel="noreferrer">portal</a><span className="mfa-legal-accent">.</span>
+        </p>
+      </div>
+    </aside>
+  );
+}
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -193,9 +221,8 @@ export default function MfaModal({ open, expired, onClose, onVerified, preset }:
           </form>
         )}
 
-        <p className="mfa-legal">
-          A ANBY consiste em sistema de inteligência artificial desenvolvido pela Anbima para auxiliar nas dúvidas relacionadas à autorregulação da associação. Apesar de todo o esforço para assegurar a exatidão e a atualização das respostas, as informações fornecidas têm fins exclusivamente informativos, podendo conter imprecisões, omissões e/ou interpretações equivocadas. As respostas fornecidas pela ANBY não constituem, nem devem ser interpretadas como aconselhamento, consultoria, parecer ou orientação de natureza profissional, jurídica e/ou financeira, tampouco como recomendação, conselho, indicação, sugestão, aviso ou garantia de resultado da Anbima. Os dados pessoais usados serão coletados e tratados em conformidade com a LGPD (Lei 13.709/18). Caso o titular dos dados pessoais deseje exercer algum de seus direitos, pode acessar nosso <a href={PORTAL_URL} target="_blank" rel="noreferrer">portal</a>.
-        </p>
+        {/* Aviso legal: o mesmo nos passos 1 e 2, abaixo dos campos (Figma 19/11/2026). */}
+        <LegalNotice />
       </section>
     </div>
   );
