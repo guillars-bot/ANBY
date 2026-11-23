@@ -1,0 +1,143 @@
+/* ===== Release 1.1 (Figma "Anby (Liqi) DESKTOP - Release 1.1", nó 112:29882) =====
+   1. Busca no histórico   2. Preferências (rodapé + página)   3. Prompt de tamanho e "Mais direta / Mais completa" */
+
+/* ---------- 1. Busca no histórico (116:73962 · estados 116:74318 / 116:74343 / 117:74409) ---------- */
+.history-search { position: relative; display: flex; align-items: center; width: 100%; }
+.history-search input {
+  width: 100%; height: 40px; padding: 0 34px 0 36px; border: 1px solid #d4d4d4; border-radius: 6px; background: #fff;
+  color: #363636; font-family: "Lato:Regular"; font-size: 14px; line-height: 21px; outline: none; appearance: none;
+  transition: border-color .15s;
+}
+.history-search input::placeholder { color: #666; opacity: 1; }
+.history-search input::-webkit-search-cancel-button { display: none; }
+.history-search input:hover { border-color: #b8b8b8; }
+.history-search input:focus, .history-search.has-value input { border-color: #0095d9; }
+.history-search input:focus-visible { box-shadow: 0 0 0 3px rgba(0, 149, 217, .18); }
+.history-search-icon {
+  position: absolute; left: 10px; top: 11px; width: 18px; height: 18px; pointer-events: none;
+  fill: none; stroke: #363636; stroke-width: 1.6; stroke-linecap: round;
+}
+.history-search-clear {
+  position: absolute; right: 8px; top: 11px; width: 18px; height: 18px; padding: 0; display: grid; place-items: center;
+  border: 0; border-radius: 4px; background: transparent; color: #0095d9; cursor: pointer;
+}
+.history-search-clear:hover { background: #edf7fb; }
+.history-search-clear svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.history-empty { margin: 0; padding: 12px 10px; color: #666; font-size: 13px; line-height: 20px; }
+/* Barra recolhida: a busca some junto com a lista. */
+.history.collapsed .history-search { display: none; }
+
+/* ---------- 2a. Rodapé da barra lateral: "Preferências · Sair" ---------- */
+.history-footer .footer-prefs {
+  padding: 0; border: 0; background: transparent; color: #0095d9; font: inherit; font-size: 11px; cursor: pointer;
+}
+.history-footer .footer-prefs:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------- 2b. Página "Suas preferências" (117:80850) ---------- */
+.prefs { max-width: 840px; padding-top: 28px; color: #363636; font-size: 14px; line-height: 20px; }
+.prefs h2 { margin: 0; font-family: "Lato:Regular"; font-weight: 400; font-size: 28px; line-height: 34px; color: #363636; }
+.prefs h3 { margin: 0; padding-top: 14px; font-family: "Lato:Regular"; font-weight: 400; font-size: 14px; line-height: 20px; color: #363636; }
+.prefs h3.prefs-section, .prefs div.prefs-section { padding-top: 20px; }
+.prefs-sub { margin: 0; padding-top: 4px; font-family: "Lato:Bold"; }
+.prefs-text { margin: 0; padding-top: 14px; }
+.prefs-text-tight { padding-top: 8px; }
+.prefs-hint { margin: 0; padding-top: 8px; color: #666; font-size: 12px; line-height: 17px; }
+.prefs-hint-gap { padding-top: 8px; font-size: 12px; line-height: 20px; }
+.prefs-options { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.prefs-card {
+  position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+  border: 1px solid #e2e6ea; border-radius: 8px; background: #fff; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.prefs-card:hover { border-color: #b9dff1; }
+.prefs-card.selected { border-color: #0095d9; background: #f5fafd; }
+.prefs-card input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.prefs-radio {
+  flex: none; width: 16px; height: 16px; margin-top: 3px; border: 1px solid #767676; border-radius: 50%; background: #fff;
+  display: grid; place-items: center;
+}
+.prefs-card.selected .prefs-radio { border-color: #0095d9; }
+.prefs-card.selected .prefs-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #0095d9; }
+.prefs-card input:focus-visible + .prefs-radio { box-shadow: 0 0 0 3px rgba(0, 149, 217, .25); }
+.prefs-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.prefs-card-text b { font-family: "Lato:Bold"; font-weight: 700; font-size: 14px; line-height: 21px; color: #363636; }
+.prefs-card-text small { font-size: 12px; line-height: 17px; color: #666; }
+/* Personalização desligada (117:88708): opções esmaecidas, "A ANBY decide" destacada. */
+.prefs-options.is-off .prefs-card { cursor: default; }
+.prefs-options.is-off .prefs-card:hover { border-color: #e2e6ea; }
+.prefs-options.is-off .prefs-card.selected, .prefs-options.is-off .prefs-card.selected:hover { border-color: #8fcdea; background: #f5fafd; }
+.prefs-options.is-off .prefs-card-text b, .prefs-options.is-off .prefs-card-text small { color: #9a9a9a; }
+.prefs-options.is-off .prefs-radio { border-color: #d4d4d4; }
+.prefs-options.is-off .prefs-card.selected .prefs-radio { border-color: #c9c9c9; }
+.prefs-options.is-off .prefs-card.selected .prefs-radio::after { background: #c9c9c9; }
+.prefs-divider { margin: 24px 0 0; border: 0; border-top: 1px solid #dfdfdf; }
+.prefs-list { margin: 0; padding: 8px 0 0 20px; list-style: none; }
+.prefs-list li { position: relative; }
+.prefs-list li + li { margin-top: 4px; }
+.prefs-list li::before { content: "•"; position: absolute; left: -14px; }
+.prefs-note { margin: 0; padding-top: 12px; color: #666; font-size: 12px; line-height: 20px; }
+/* Interruptor "Personalizar as respostas para mim" */
+.prefs-switch-card { cursor: default; }
+.prefs-switch-card:hover { border-color: #e2e6ea; }
+.prefs-switch {
+  flex: none; position: relative; width: 34px; height: 20px; margin-top: 1px; padding: 0; border: 0; border-radius: 10px;
+  background: #c4c4c4; cursor: pointer; transition: background .2s;
+}
+.prefs-switch[aria-checked="true"] { background: #0095d9; }
+.prefs-switch i {
+  position: absolute; top: 1px; left: 1px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .2s;
+}
+.prefs-switch[aria-checked="true"] i { transform: translateX(14px); }
+.prefs-switch:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0, 149, 217, .3); }
+/* Recomeçar do zero */
+.prefs-restart { padding-top: 14px; }
+.prefs-button {
+  height: 36px; padding: 0 16px; border: 1px solid #0095d9; border-radius: 8px; background: #fff; color: #0079b1;
+  font-family: "Lato:Bold"; font-size: 13px; cursor: pointer; transition: background .15s;
+}
+.prefs-button:hover { background: #edf7fb; }
+.prefs-button.primary { background: #0095d9; color: #fff; }
+.prefs-button.primary:hover { background: #007db7; }
+.prefs-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.prefs-confirm b { font-family: "Lato:Bold"; font-size: 14px; margin-right: 4px; }
+.prefs-status { margin: 0; padding-top: 12px; color: #1e7b34; font-size: 13px; line-height: 20px; }
+
+/* ---------- 3a. Prompt de tamanho (captura do fornecedor 115:67574 / 115:67575) ---------- */
+.size-prompt {
+  position: relative; margin-top: 14px; padding: 12px 40px 14px 14px; border: 1px solid #cfe7f3; border-radius: 8px; background: #edf7fb;
+  color: #363636; font-size: 13px; line-height: 20px;
+}
+.size-prompt p { margin: 0; }
+.size-prompt-options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.size-prompt-chip {
+  height: 26px; padding: 0 12px; border: 1px solid #0095d9; border-radius: 13px; background: #fff; color: #0079b1;
+  font-family: "Lato:Regular"; font-size: 12px; cursor: pointer; transition: background .15s;
+}
+.size-prompt-chip:hover { background: #e5f4fb; }
+.size-prompt-close {
+  position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; padding: 0; display: grid; place-items: center;
+  border: 0; border-radius: 4px; background: transparent; color: #0095d9; cursor: pointer;
+}
+.size-prompt-close:hover { background: #dbeff8; }
+.size-prompt-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.size-prompt.is-done { padding: 12px 14px; }
+.size-prompt-link {
+  padding: 0; border: 0; background: transparent; color: #0095d9; font: inherit; font-family: "Lato:Bold"; cursor: pointer;
+}
+.size-prompt-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------- 3b. "Mais direta / Mais completa" ao lado das ações (118:96046 · 119:98852) ---------- */
+.response-actions .answer-size-chips { display: flex; align-items: center; gap: 6px; margin-left: 4px; padding-left: 10px; border-left: 1px solid #e2e6ea; }
+.response-actions button.size-chip {
+  width: auto; height: 22px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #cfe7f3; border-radius: 11px; background: #fff; color: #0079b1;
+  font-family: "Lato:Regular"; font-size: 11px; line-height: 20px; white-space: nowrap; cursor: pointer;
+}
+.response-actions button.size-chip:hover { background: #e5f4fb; border-color: #9fd3ec; }
+.regen-pair { margin-top: 4px; }
+
+@media (max-width: 850px) {
+  .prefs { padding-top: 12px; }
+  .prefs h2 { font-size: 24px; line-height: 30px; }
+  .response-actions { flex-wrap: wrap; height: auto; min-height: 26px; row-gap: 4px; }
+}

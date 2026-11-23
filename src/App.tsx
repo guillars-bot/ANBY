@@ -3,6 +3,19 @@ import MfaModal from "./MfaModal";
 import { features } from "./features";
 import { SCENARIOS, SCENARIO_GROUPS, findScenario, type MfaPreset, type Scenario } from "./scenarios";
 import { clearSession, firstName, initials, loadSession, saveSession, type Session } from "./session";
+import PreferencesPanel from "./PreferencesPanel";
+import { loadPreferences, regenerateAnswer, savePreferences, type Preferences } from "./preferences";
+
+// Release 1.1: a busca do histórico só aparece a partir de 5 conversas (busca apenas pelo título).
+const SEARCH_MIN_CONVERSATIONS = 5;
+const normalize = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+type PromptChoice = "diretas" | "como" | "completas" | "closed";
+const PROMPT_CONFIRM: Record<Exclude<PromptChoice, "closed">, string> = {
+  diretas: "Combinado: respostas mais diretas daqui em diante.",
+  como: "Combinado: mantenho as respostas como estão.",
+  completas: "Combinado: respostas mais completas daqui em diante.",
+};
+type Regen = { id: number; kind: "direta" | "completa"; answer: string | null };
 
 const A = "/assets";
 
@@ -730,7 +743,15 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(initialSession.session);
   const [sessionExpired, setSessionExpired] = useState(initialSession.expired);
   const [mfaOpen, setMfaOpen] = useState(false);
-  const [panel, setPanel] = useState<null | "about" | "connect" | "terms">(null);
+  const [panel, setPanel] = useState<null | "about" | "connect" | "terms" | "preferences">(null);
+  // Release 1.1 — busca no histórico, preferências de resposta, prompt de tamanho e "Mais direta / Mais completa".
+  const [historySearch, setHistorySearch] = useState("");
+  const [prefs, setPrefsState] = useState<Preferences>(loadPreferences);
+  const setPrefs = (next: Preferences) => { setPrefsState(next); savePreferences(next); };
+  const [newChatIds, setNewChatIds] = useState<number[]>([]);
+  const [promptChoices, setPromptChoices] = useState<Record<number, PromptChoice>>({});
+  const [promptSeen, setPromptSeen] = useState(false);
+  const [regens, setRegens] = useState<Regen[]>([]);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -755,9 +776,23 @@ export default function App() {
     setCopiedIndex(null);
     setRatings({});
     setDrawerOpen(false);
+    setRegens([]);
   };
 
   const askQuestion = (text: string) => {
+    // Release 1.1: a primeira pergunta de um chat novo cria a conversa no histórico (conta para a regra da busca).
+    if (active === null && entryScenario === null) {
+      const id = Date.now();
+      const now = new Date();
+      const date = `Hoje, ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      setConversations((items) => [{ id, title: text, date, questions: 1 }, ...items]);
+      setNewChatIds((ids) => [...ids, id]);
+      setActive(id);
+    } else if (active !== null) {
+      setConversations((items) => items.map((item) => (item.id === active ? { ...item, questions: item.questions + 1 } : item)));
+    }
+    if (prefs.personalize) setPrefs({ ...prefs, questions: prefs.questions + 1 });
+    setRegens([]);
     setErrorScenario((current) => (current && current.kind === "chat" ? null : current));
     setSentQuestion(text);
     setQuestion("");
@@ -844,9 +879,29 @@ export default function App() {
     setFeedbackOpen(true);
   };
 
-  const renderActions = (index: number, text: string, answerQuestion: string, hideTrace = false) => {
+  // Release 1.1: "Mais direta" / "Mais completa" enviam o pedido como mensagem do usuário e a ANBY refaz a resposta.
+  const regenerate = (kind: "direta" | "completa", text: string) => {
+    const id = Date.now();
+    setRegens((items) => [...items, { id, kind, answer: null }]);
+    if (prefs.personalize) {
+      setPrefs(kind === "direta" ? { ...prefs, shorterAsks: prefs.shorterAsks + 1 } : { ...prefs, longerAsks: prefs.longerAsks + 1 });
+    }
+    window.setTimeout(() => {
+      setRegens((items) => items.map((item) => (item.id === id ? { ...item, answer: regenerateAnswer(text, kind) } : item)));
+    }, 1400);
+    window.setTimeout(() => conversationRef.current?.scrollTo({ top: conversationRef.current.scrollHeight, behavior: "smooth" }), 60);
+  };
+
+  const choosePrompt = (conversationId: number, choice: PromptChoice) => {
+    setPromptChoices((current) => ({ ...current, [conversationId]: choice }));
+    setPromptSeen(true);
+    if (choice === "diretas" || choice === "completas") setPrefs({ ...prefs, personalize: true, size: choice });
+  };
+
+  const renderActions = (index: number, text: string, answerQuestion: string, hideTrace = false, sizeChips = true) => {
     const copiedHere = copiedIndex === index;
     const rating = ratings[index];
+    const showChips = sizeChips && promptSeen && index !== 200;
     return (
       <div className="response-actions" aria-label="Ações da resposta">
         <button onClick={() => copyAnswer(index, text)} data-tooltip={copiedHere ? "Copiado!" : "Copiar"} aria-label={copiedHere ? "Resposta copiada" : "Copiar resposta"}>
@@ -876,9 +931,63 @@ export default function App() {
             <TraceIcon />
           </button>
         )}
+        {showChips && (
+          <span className="answer-size-chips">
+            <button className="size-chip" onClick={() => regenerate("direta", text)} aria-label="Refazer a resposta mais direta">Mais direta</button>
+            <button className="size-chip" onClick={() => regenerate("completa", text)} aria-label="Refazer a resposta mais completa">Mais completa</button>
+          </span>
+        )}
       </div>
     );
   };
+
+  // Release 1.1: prompt de tamanho na primeira resposta de um chat novo (regra do protótipo; validar com o fornecedor).
+  const promptOpenFor = (conversationId: number | null) =>
+    conversationId !== null && newChatIds.includes(conversationId) && prefs.personalize && promptChoices[conversationId] === undefined;
+
+  const renderSizePrompt = (conversationId: number | null) => {
+    if (conversationId === null || !newChatIds.includes(conversationId)) return null;
+    const choice = promptChoices[conversationId];
+    if (choice === "closed") return null;
+    if (choice) {
+      return (
+        <div className="size-prompt is-done" role="status">
+          <p>{PROMPT_CONFIRM[choice]} Dá para mudar quando quiser em <button className="size-prompt-link" onClick={() => openPanel("preferences")}>Preferências</button>.</p>
+        </div>
+      );
+    }
+    if (!prefs.personalize) return null;
+    return (
+      <div className="size-prompt" role="group" aria-labelledby={`size-prompt-${conversationId}`}>
+        <p id={`size-prompt-${conversationId}`}>Para eu acertar o tamanho das respostas, você prefere:</p>
+        <div className="size-prompt-options">
+          <button className="size-prompt-chip" onClick={() => choosePrompt(conversationId, "diretas")}>Mais diretas</button>
+          <button className="size-prompt-chip" onClick={() => choosePrompt(conversationId, "como")}>Como estão</button>
+          <button className="size-prompt-chip" onClick={() => choosePrompt(conversationId, "completas")}>Mais completas</button>
+        </div>
+        <button className="size-prompt-close" onClick={() => choosePrompt(conversationId, "closed")} aria-label="Fechar">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9m0-9-9 9" /></svg>
+        </button>
+      </div>
+    );
+  };
+
+  const renderRegens = () => regens.map((item, position) => (
+    <div className="dialogue-pair regen-pair" key={item.id}>
+      <div className="user-row"><p>{item.kind === "direta" ? "Mais direta, por favor." : "Mais completa, por favor."}</p></div>
+      <div className={item.answer ? "ai-row" : "ai-row thinking-row"}>
+        <img src={`${A}/54cd1.png`} alt="ANBY" />
+        {item.answer ? (
+          <div className="ai-content">
+            <p>{item.answer}</p>
+            {renderActions(300 + position, item.answer, "", true)}
+          </div>
+        ) : (
+          <div className="thinking-status" role="status" aria-live="polite"><i aria-hidden="true" /><span>Refazendo a resposta...</span></div>
+        )}
+      </div>
+    </div>
+  ));
 
   const closeFeedback = () => {
     setFeedbackOpen(false);
@@ -967,7 +1076,7 @@ export default function App() {
     window.history.pushState({ anby: true }, "");
   };
 
-  const openPanel = (kind: "about" | "connect" | "terms") => {
+  const openPanel = (kind: "about" | "connect" | "terms" | "preferences") => {
     setPanel(kind);
     setDrawerOpen(false);
     setOpenMenuId(null);
@@ -1136,6 +1245,10 @@ export default function App() {
   const chatScenario = errorScenario && errorScenario.kind === "chat" ? errorScenario : null;
   const stateScenario = errorScenario && errorScenario.kind === "state" ? errorScenario : null;
   const pageScenario = errorScenario && errorScenario.kind === "page" ? errorScenario : null;
+  const showHistorySearch = conversations.length >= SEARCH_MIN_CONVERSATIONS;
+  const searching = showHistorySearch && historySearch.trim().length > 0;
+  const filteredConversations = searching ? conversations.filter((item) => normalize(item.title).includes(normalize(historySearch.trim()))) : conversations;
+  const isNewChat = active !== null && newChatIds.includes(active);
   const hasConversation = chatScenario !== null || entryScenario !== null || active !== null || sentQuestion.length > 0;
   const currentQuestion = entryScenario === "fund-composition" ? "Compare as categorias de fundos e entenda a composição do PL" : sentQuestion || conversations.find((item) => item.id === active)?.title || "";
   const currentDialogue = active ? (dialogueByConversation as Record<number, { answer: string; followups: string[][] } | undefined>)[active] || genericDialogue : genericDialogue;
@@ -1314,6 +1427,24 @@ export default function App() {
                   <span className="new-chat-plus">＋</span><span className="new-chat-label">Nova conversa</span>
                 </button>
               </div>
+              {showHistorySearch && (
+                <div className={historySearch ? "history-search has-value" : "history-search"} role="search">
+                  <svg className="history-search-icon" viewBox="0 0 18 18" aria-hidden="true"><circle cx="7.75" cy="7.75" r="5.25" /><path d="m11.6 11.6 4.15 4.15" /></svg>
+                  <input
+                    type="search"
+                    value={historySearch}
+                    onChange={(event) => { setHistorySearch(event.target.value); setRecentExpanded(true); }}
+                    onKeyDown={(event) => { if (event.key === "Escape") setHistorySearch(""); }}
+                    placeholder="Buscar conversas"
+                    aria-label="Buscar conversas pelo título"
+                  />
+                  {historySearch && (
+                    <button className="history-search-clear" onClick={() => setHistorySearch("")} aria-label="Limpar busca">
+                      <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4.5 4.5l9 9m0-9-9 9" /></svg>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="history-scroll">
             <div className="expanded-content">
@@ -1321,7 +1452,8 @@ export default function App() {
               Conversas recentes <img className={recentExpanded ? "" : "rotated"} src={`${A}/cc7eb.svg`} alt="" />
             </button>
             {recentExpanded && <div className={showAllConversations ? "conversation-list show-all" : "conversation-list"}>
-              {(showAllConversations ? conversations : conversations.slice(0, 3)).map((item) => (
+              {searching && filteredConversations.length === 0 && <p className="history-empty" role="status">Nenhuma conversa encontrada</p>}
+              {(searching ? filteredConversations : showAllConversations ? conversations : conversations.slice(0, 3)).map((item) => (
                 <div
                   key={item.id}
                   className={`conversation-item${active === item.id ? " selected" : ""}${openMenuId === item.id ? " menu-open" : ""}`}
@@ -1347,7 +1479,7 @@ export default function App() {
                   ) : (
                     <button
                       className={`${active === item.id ? "conversation active" : "conversation"} conversation-edited`}
-                      onClick={() => { setPanel(null); setEntryScenario(null); setActive(item.id); setSentQuestion(""); setResponding(false); setInterrupted(false); setDrawerOpen(false); setOpenMenuId(null); }}
+                      onClick={() => { setPanel(null); setEntryScenario(null); setActive(item.id); setSentQuestion(""); setResponding(false); setInterrupted(false); setDrawerOpen(false); setOpenMenuId(null); setRegens([]); }}
                     >
                       <span>{item.title}</span>
                       <small className={deleteErrorId === item.id ? "delete-error" : undefined} role={deleteErrorId === item.id ? "alert" : undefined}>
@@ -1386,7 +1518,7 @@ export default function App() {
                   )}
                 </div>
               ))}
-              {conversations.length > 3 && <button className="show-all-conversations" onClick={() => setShowAllConversations(!showAllConversations)}>{showAllConversations ? "Ver menos" : "Ver mais"}</button>}
+              {!searching && conversations.length > 3 && <button className="show-all-conversations" onClick={() => setShowAllConversations(!showAllConversations)}>{showAllConversations ? "Ver menos" : "Ver mais"}</button>}
             </div>}
             {features.conectarClaude && <div className="sidebar-group">
               <p>Soluções</p>
@@ -1407,7 +1539,7 @@ export default function App() {
               <button className="avatar-small account-button" aria-label="Minha conta" onClick={() => { if (sidebarCollapsed) { hideTip(); setSidebarCollapsed(false); } }} {...tipProps("Minha conta", "r", sidebarCollapsed)}>{session ? initials(session.name) : "?"}</button>
               <span className="footer-text">
                 <b>{session ? session.name.trim() : "Visitante"}</b>
-                <small>Minha conta <span aria-hidden="true">·</span> <a href="#sair" onClick={(event) => { event.preventDefault(); logout(); }}>Sair</a></small>
+                <small><button className="footer-prefs" onClick={() => openPanel("preferences")}>Preferências</button> <span aria-hidden="true">·</span> <a href="#sair" onClick={(event) => { event.preventDefault(); logout(); }}>Sair</a></small>
               </span>
             </div>
           </aside>
@@ -1417,9 +1549,9 @@ export default function App() {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5 5 12M12 9l-3 3" /></svg>
           </button>
           {panel && (
-            <section className="panel-view" aria-label={panel === "terms" ? "Termos de uso" : panel === "about" ? "Sobre a ANBY" : "Conectar no Claude"}>
+            <section className={panel === "preferences" ? "panel-view prefs-view" : "panel-view"} aria-label={panel === "terms" ? "Termos de uso" : panel === "about" ? "Sobre a ANBY" : panel === "preferences" ? "Suas preferências" : "Conectar no Claude"}>
               <div className="panel-bar"><button className="panel-back" onClick={() => setPanel(null)}>← Voltar ao chat</button></div>
-              <div className="panel-body">{panel === "connect" ? <ConnectPanel /> : <AboutPanel />}</div>
+              <div className="panel-body">{panel === "preferences" ? <PreferencesPanel prefs={prefs} onChange={setPrefs} /> : panel === "connect" ? <ConnectPanel /> : <AboutPanel />}</div>
             </section>
           )}
           {tip && <div className={`side-tip ${tip.dir}`} style={{ top: tip.top, left: tip.left }} role="tooltip">{tip.text}</div>}
@@ -1496,9 +1628,12 @@ export default function App() {
                   <img src={`${A}/54cd1.png`} alt="ANBY" />
                   <div className="ai-content">
                     <p>{currentDialogue.answer}</p>
-                    {renderActions(0, currentDialogue.answer, currentQuestion)}
+                    {renderActions(0, currentDialogue.answer, currentQuestion, false, !promptOpenFor(active))}
+                    {renderSizePrompt(active)}
                   </div>
                 </div>
+                {/* Release 1.1: no chat novo, a conversa mostra só a primeira pergunta e resposta (o prompt de tamanho fica por último). */}
+                {!isNewChat && <>
                 <div className="user-row second-message">
                   <p>{currentDialogue.followups[0][0]}</p>
                 </div>
@@ -1524,6 +1659,8 @@ export default function App() {
                   </div>
                 ))}
                 </>}
+                </>}
+                {!chatScenario && !scenarioLoading && !responding && renderRegens()}
               </div>
               <button
                 className={showScrollBottom ? "scroll-bottom visible" : "scroll-bottom"}
