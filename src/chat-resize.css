@@ -1,0 +1,44 @@
+/* ===== v1.4 · Conteúdo do chat acompanha o redimensionamento do modal =====
+   Antes: sugestões, conversa e campo de pergunta ficavam presos em 692 px (bloco "V2.0" do index.css),
+   mesmo com o modal maior.
+   Agora as larguras seguem a área do chat (.chat-home) por container query.
+   No tamanho padrão do modal (1200 × 660) nada muda: a área útil do chat tem 812 px e as fórmulas dão 692 px.
+   No celular (≤ 850 px) nada muda: os limites abaixo são todos maiores que a tela. */
+
+/* A área do chat vira referência de largura (1cqi = 1% da largura útil do .chat-home). */
+.chat-home {
+  container-type: inline-size;
+  container-name: anby-chat;
+}
+
+/* --- Tela inicial (sugestões de pergunta) ---------------------------------
+   Cresce só um pouco: 85% da área útil, de 692 px (padrão) até 840 px no máximo. */
+.suggestions,
+.chat-home:not(:has(.conversation-viewport)) .composer-area {
+  max-width: clamp(692px, 85cqi, 840px);
+}
+
+/* --- Conversa (perguntas e respostas) -------------------------------------
+   Acompanha a largura do modal com recuo lateral fixo: além dos 54 px de padding do .chat-home,
+   sobram 60 px de cada lado (cerca de 114 px de recuo por lado). Limite de 1040 px em telas muito largas.
+   O campo de pergunta segue a mesma coluna, para ficar alinhado às mensagens. */
+.conversation-viewport,
+.chat-home:has(.conversation-viewport) .composer-area {
+  max-width: clamp(692px, calc(100cqi - 120px), 1040px);
+}
+
+/* Texto corrido das respostas: limite de leitura de 760 px (cerca de 110 caracteres a 13 px).
+   Tabelas, gráficos, cards de números e fichas continuam ocupando a coluna inteira. */
+.ai-content > p,
+.ai-content > ul,
+.ai-content > ol {
+  max-width: 760px;
+}
+
+/* Balão do usuário (só desktop): os mesmos 416 px no tamanho padrão; com o modal maior,
+   acompanha 60% da coluna até 560 px. No celular as regras do index.css continuam valendo. */
+@media (min-width: 851px) {
+  .user-row p {
+    width: clamp(416px, 60%, 560px);
+  }
+}
