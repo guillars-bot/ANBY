@@ -141,3 +141,17 @@
   .prefs h2 { font-size: 24px; line-height: 30px; }
   .response-actions { flex-wrap: wrap; height: auto; min-height: 26px; row-gap: 4px; }
 }
+
+/* ---------- 4. Ajuste mobile (24/11): barra do topo do chat ----------
+   O ícone da barra lateral e o "×" ficavam soltos sobre a conversa e o degradê do topo
+   esmaecia a primeira mensagem, que parecia cortada. Agora o chat reserva a faixa do topo
+   (64px, com linha divisória) e a conversa começa abaixo dela. */
+@media (max-width: 850px) {
+  .chat-home:has(.conversation-viewport) { padding-top: 64px; }
+  .chat-home:has(.conversation-viewport)::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 63px; height: 1px; background: #ededed; z-index: 2;
+  }
+  .chat-home:has(.conversation-viewport) .conversation-viewport { margin-top: 0; }
+  .conversation-viewport.has-overflow::before { height: 16px; }
+  .conversation-scroll { padding-top: 20px; }
+}
